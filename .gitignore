@@ -17,6 +17,8 @@ data/*
 !data/samples/
 data/samples/*
 !data/samples/.gitkeep
+!data/samples/gaveta_ejemplo.pdf
+!data/samples/historial_ejemplo.csv
 *.db
 *.sqlite
 *.sqlite3

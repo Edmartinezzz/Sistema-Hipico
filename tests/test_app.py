@@ -33,6 +33,9 @@ def test_app_analiza_la_gaveta_de_ejemplo():
         assert columna in tabla.columns
     assert [m.value for m in at.metric][:2] == ["2", "18"]
     assert at.selectbox(key="detalle").options
+    retirado = tabla[tabla["Caballo"] == "Viento Sur"].iloc[0]
+    assert retirado["Cuota"] == "NADA"
+    assert retirado["Prob. modelo"] != retirado["Prob. modelo"]  # NaN → se muestra «—»
 
     # Cambiar el caballo del detalle no borra los resultados.
     at.selectbox(key="detalle").select_index(7).run()

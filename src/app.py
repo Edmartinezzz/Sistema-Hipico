@@ -54,6 +54,12 @@ def race_table(rows: list[dict]) -> pd.DataFrame:
             frame[column] = None
     frame = frame[list(COLUMNS)].rename(columns=COLUMNS)
     frame["Value bet"] = frame["Value bet"].map({True: "Sí", False: ""})
+    for column in PERCENT_COLUMNS:
+        frame[column] = pd.to_numeric(frame[column], errors="coerce").astype(float)
+    text_columns = [c for c in frame.columns if c not in PERCENT_COLUMNS and c != "#"]
+    frame[text_columns] = frame[text_columns].astype(object).where(
+        frame[text_columns].notna(), "—"
+    )
     return frame
 
 
@@ -154,7 +160,8 @@ def _show_results(result: dict) -> None:
                              race.get("date")) if v
         )
         st.subheader(f"Carrera {race['race_number']}" + (f" — {details}" if details else ""))
-        st.dataframe(_style(race_table(race["rows"])), hide_index=True)
+        table = race_table(race["rows"])
+        st.dataframe(_style(table), hide_index=True, height=36 * (len(table) + 1) + 3)
 
     _show_detail(result)
 
