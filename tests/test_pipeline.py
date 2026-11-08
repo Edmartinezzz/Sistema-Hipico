@@ -132,3 +132,16 @@ def test_analyze_pdf_sin_fecha_no_guarda_pero_analiza(tmp_path, db):
     resultado = pipeline.analyze_pdf(pdf, db_path=db)
     assert len(resultado["races"]) == 2
     assert any("no se guarda" in w for w in resultado["warnings"])
+
+
+def test_datos_de_ejemplo_incluidos_en_el_repo(db):
+    from pathlib import Path
+
+    muestras = Path(__file__).resolve().parent.parent / "data" / "samples"
+    assert (muestras / "gaveta_ejemplo.pdf").exists()
+    assert pipeline.SAMPLE_CSV.exists()
+    resultado = pipeline.analyze_pdf(
+        muestras / "gaveta_ejemplo.pdf", db_path=db, csv_path=pipeline.SAMPLE_CSV
+    )
+    value_bets = [f["horse_name"] for r in resultado["races"] for f in r["rows"] if f["value_bet"]]
+    assert value_bets == ["Lucero Real", "Ñandú Veloz", "Orquídea"]
