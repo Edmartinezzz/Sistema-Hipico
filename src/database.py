@@ -217,10 +217,23 @@ def _race_key(race: dict[str, Any]) -> tuple[str, str, int]:
             "La carrera necesita 'date', 'track' y 'race_number': "
             f"{ {k: race.get(k) for k in ('date', 'track', 'race_number')} }"
         )
-    try:
-        return date, track, int(number)
-    except (TypeError, ValueError) as exc:
-        raise ValueError(f"'race_number' no es un entero: {number!r}") from exc
+    return date, track, _parse_race_number(number)
+
+
+def _parse_race_number(number: Any) -> int:
+    """Convierte el número de carrera a entero sin truncar ni aceptar booleanos."""
+    if isinstance(number, bool):
+        raise ValueError(f"'race_number' no es un entero: {number!r}")
+    if isinstance(number, int):
+        return number
+    if isinstance(number, float) and number.is_integer():
+        return int(number)
+    if isinstance(number, str):
+        try:
+            return int(number.strip())
+        except ValueError:
+            pass
+    raise ValueError(f"'race_number' no es un entero: {number!r}")
 
 
 def _upsert_race(conn: sqlite3.Connection, race: dict[str, Any]) -> int:
