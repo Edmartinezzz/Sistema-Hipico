@@ -131,7 +131,9 @@ def test_normalize_odds(raw, esperado):
 
 
 def test_detect_columns_variantes():
-    tabla = [["N°", "CABALLO", "Jockey", "Entrenador", "Peso Kg", "Cuota ML", "Récord W-P-S", "Edad"]]
+    tabla = [[
+        "N°", "CABALLO", "Jockey", "Entrenador", "Peso Kg", "Cuota ML", "Récord W-P-S", "Edad",
+    ]]
     assert pdf_extractor.detect_columns(tabla) == {
         "post_position": 0,
         "horse_name": 1,

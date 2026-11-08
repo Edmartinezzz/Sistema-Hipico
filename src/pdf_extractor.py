@@ -47,7 +47,9 @@ _DATE_RE = re.compile(
     r"fecha\s*:\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{4})", re.IGNORECASE
 )
 _DISTANCE_RE = re.compile(r"\b(\d{3,4})\s*(m|mts|metros|y|yds|yardas)\b", re.IGNORECASE)
-_SURFACE_RE = re.compile(r"\b(arena|grama|c[ée]sped|tierra|dirt|turf|sint[ée]tica)\b", re.IGNORECASE)
+_SURFACE_RE = re.compile(
+    r"\b(arena|grama|c[ée]sped|tierra|dirt|turf|sint[ée]tica)\b", re.IGNORECASE
+)
 
 
 def _strip_accents(text: str) -> str:
