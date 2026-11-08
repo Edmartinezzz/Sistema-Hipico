@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import numbers
 import os
 import sqlite3
 import unicodedata
@@ -224,8 +225,8 @@ def _parse_race_number(number: Any) -> int:
     """Convierte el número de carrera a entero sin truncar ni aceptar booleanos."""
     if isinstance(number, bool):
         raise ValueError(f"'race_number' no es un entero: {number!r}")
-    if isinstance(number, int):
-        return number
+    if isinstance(number, numbers.Integral):
+        return int(number)
     if isinstance(number, float) and number.is_integer():
         return int(number)
     if isinstance(number, str):

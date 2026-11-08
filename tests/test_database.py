@@ -2,6 +2,7 @@
 
 import sqlite3
 
+import numpy as np
 import pytest
 
 from src import database
@@ -171,13 +172,17 @@ def test_save_entries_rechaza_carrera_sin_clave_completa(db_path, campo, valor):
     assert database.get_horse("Brisa", db_path) is None
 
 
-@pytest.mark.parametrize("numero", ["tercera", "3.7", 3.7, True, False, [3]])
+@pytest.mark.parametrize(
+    "numero", ["tercera", "3.7", 3.7, True, False, [3], np.float64(3.7), np.bool_(True)]
+)
 def test_upsert_race_rechaza_numero_no_entero(db_path, numero):
     with pytest.raises(ValueError):
         database.upsert_race({**RACE, "race_number": numero}, db_path)
 
 
-@pytest.mark.parametrize("numero", [3, 3.0, "3", " 3 "])
+@pytest.mark.parametrize(
+    "numero", [3, 3.0, "3", " 3 ", np.int64(3), np.float64(3.0)]
+)
 def test_upsert_race_acepta_numero_entero_en_varios_formatos(db_path, numero):
     first = database.upsert_race(RACE, db_path)
     assert database.upsert_race({**RACE, "race_number": numero}, db_path) == first
