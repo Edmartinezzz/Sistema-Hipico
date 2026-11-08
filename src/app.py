@@ -46,6 +46,12 @@ def _db_path() -> str:
     return os.getenv("HORSE_DB_PATH", database.DEFAULT_DB_PATH)
 
 
+def _percent(value, pattern: str = "{:.1%}") -> str | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
+        return None
+    return pattern.format(value)
+
+
 def race_table(rows: list[dict]) -> pd.DataFrame:
     """Tabla de resultados de una carrera con los nombres de columna en español."""
     frame = pd.DataFrame(rows)
@@ -55,8 +61,9 @@ def race_table(rows: list[dict]) -> pd.DataFrame:
     frame = frame[list(COLUMNS)].rename(columns=COLUMNS)
     frame["Value bet"] = frame["Value bet"].map({True: "Sí", False: ""})
     for column in PERCENT_COLUMNS:
-        frame[column] = pd.to_numeric(frame[column], errors="coerce").astype(float)
-    text_columns = [c for c in frame.columns if c not in PERCENT_COLUMNS and c != "#"]
+        pattern = "{:+.1%}" if column == "Edge" else "{:.1%}"
+        frame[column] = [_percent(value, pattern) for value in frame[column]]
+    text_columns = [c for c in frame.columns if c != "#"]
     frame[text_columns] = frame[text_columns].astype(object).where(
         frame[text_columns].notna(), "—"
     )
@@ -67,9 +74,7 @@ def _style(frame: pd.DataFrame):
     def highlight(row: pd.Series) -> list[str]:
         return [VALUE_BET_STYLE if row["Value bet"] == "Sí" else ""] * len(row)
 
-    return frame.style.apply(highlight, axis=1).format(
-        {c: "{:.1%}" for c in PERCENT_COLUMNS}, na_rep="—"
-    )
+    return frame.style.apply(highlight, axis=1)
 
 
 def _save_upload(uploaded) -> Path:
@@ -161,7 +166,7 @@ def _show_results(result: dict) -> None:
         )
         st.subheader(f"Carrera {race['race_number']}" + (f" — {details}" if details else ""))
         table = race_table(race["rows"])
-        st.dataframe(_style(table), hide_index=True, height=36 * (len(table) + 1) + 3)
+        st.dataframe(_style(table), hide_index=True, height=35 * (len(table) + 1) + 3)
 
     _show_detail(result)
 
