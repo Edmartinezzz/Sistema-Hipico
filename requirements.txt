@@ -1,0 +1,10 @@
+# Dependencias de ejecución (todas open-source y gratuitas)
+pdfplumber>=0.11,<0.12
+reportlab>=4.2,<5
+requests>=2.32,<3
+pandas>=2.2,<3
+streamlit>=1.39,<2
+
+# Dependencias de desarrollo y pruebas
+pytest>=8.3,<9
+responses>=0.25,<1
