@@ -6,8 +6,11 @@ compartir estado.
 
 Tablas:
 
-- ``horses``: datos fijos del caballo (nombre único, sin distinguir mayúsculas).
-- ``races``: carreras, únicas por (fecha, hipódromo, número de carrera).
+- ``horses``: datos fijos del caballo. La identidad es ``name_key``: el nombre
+  normalizado (Unicode NFC, espacios colapsados y ``casefold``), de modo que
+  «Relámpago» y «RELÁMPAGO» son el mismo caballo.
+- ``races``: carreras, únicas por (fecha, hipódromo, número de carrera); los
+  tres campos son obligatorios.
 - ``entries``: participación de un caballo en una carrera.
 - ``enrichment``: datos externos en JSON, con su fuente y fecha de obtención.
 """
@@ -18,6 +21,7 @@ import json
 import logging
 import os
 import sqlite3
+import unicodedata
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,7 +34,8 @@ DEFAULT_DB_PATH = os.getenv("HORSE_DB_PATH", "data/horse_analytics.db")
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS horses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    name TEXT NOT NULL,
+    name_key TEXT NOT NULL UNIQUE,
     birth_year INTEGER,
     sex TEXT,
     sire TEXT,
@@ -40,11 +45,11 @@ CREATE TABLE IF NOT EXISTS horses (
 
 CREATE TABLE IF NOT EXISTS races (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT,
-    track TEXT,
+    date TEXT NOT NULL,
+    track TEXT NOT NULL,
     distance TEXT,
     surface TEXT,
-    race_number INTEGER,
+    race_number INTEGER NOT NULL,
     UNIQUE (date, track, race_number)
 );
 
@@ -87,6 +92,20 @@ _ENTRY_FIELDS = (
 def _now() -> str:
     """Devuelve la fecha y hora actual en UTC en formato ISO 8601."""
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _clean_name(name: str | None) -> str:
+    """Recorta el nombre y colapsa los espacios internos."""
+    return " ".join((name or "").split())
+
+
+def name_key(name: str | None) -> str:
+    """Clave de identidad de un caballo: nombre limpio, NFC y ``casefold``.
+
+    ``casefold`` trata mayúsculas Unicode (Á/á, Ñ/ñ), a diferencia de la
+    colación ``NOCASE`` de SQLite, que solo cubre ASCII.
+    """
+    return unicodedata.normalize("NFC", _clean_name(name)).casefold()
 
 
 def _resolve_path(db_path: str | None) -> str:
@@ -138,25 +157,26 @@ def _upsert_horse(conn: sqlite3.Connection, name: str, **fields: Any) -> int:
 
     Los campos con valor ``None`` no sobrescriben datos ya guardados.
     """
-    clean_name = (name or "").strip()
+    clean_name = _clean_name(name)
     if not clean_name:
         raise ValueError("El nombre del caballo no puede estar vacío")
+    key = name_key(clean_name)
 
     values = [fields.get(f) for f in _HORSE_FIELDS]
     conn.execute(
         """
-        INSERT INTO horses (name, birth_year, sex, sire, dam, last_updated)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(name) DO UPDATE SET
+        INSERT INTO horses (name, name_key, birth_year, sex, sire, dam, last_updated)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(name_key) DO UPDATE SET
             birth_year = COALESCE(excluded.birth_year, horses.birth_year),
             sex = COALESCE(excluded.sex, horses.sex),
             sire = COALESCE(excluded.sire, horses.sire),
             dam = COALESCE(excluded.dam, horses.dam),
             last_updated = excluded.last_updated
         """,
-        (clean_name, *values, _now()),
+        (clean_name, key, *values, _now()),
     )
-    row = conn.execute("SELECT id FROM horses WHERE name = ?", (clean_name,)).fetchone()
+    row = conn.execute("SELECT id FROM horses WHERE name_key = ?", (key,)).fetchone()
     return int(row["id"])
 
 
@@ -168,7 +188,7 @@ def upsert_horse(
     dam: str | None = None,
     db_path: str | None = None,
 ) -> int:
-    """Inserta un caballo o actualiza el existente (por nombre, sin distinguir mayúsculas).
+    """Inserta un caballo o actualiza el existente (misma :func:`name_key`).
 
     Los argumentos en ``None`` conservan el valor previo en la base de datos,
     así nunca se borran datos conocidos por falta de información.
@@ -182,44 +202,61 @@ def upsert_horse(
         )
 
 
-def _upsert_race(conn: sqlite3.Connection, race: dict[str, Any]) -> int:
-    """Inserta o actualiza una carrera identificada por fecha, hipódromo y número."""
-    key = (race.get("date"), race.get("track"), race.get("race_number"))
-    row = conn.execute(
-        "SELECT id FROM races WHERE date IS ? AND track IS ? AND race_number IS ?",
-        key,
-    ).fetchone()
-    if row:
-        conn.execute(
-            """
-            UPDATE races SET
-                distance = COALESCE(?, distance),
-                surface = COALESCE(?, surface)
-            WHERE id = ?
-            """,
-            (race.get("distance"), race.get("surface"), row["id"]),
-        )
-        return int(row["id"])
+def _race_key(race: dict[str, Any]) -> tuple[str, str, int]:
+    """Valida y devuelve la clave (fecha, hipódromo, número) de una carrera.
 
-    cur = conn.execute(
+    Raises:
+        ValueError: si falta algún componente; sin clave completa no se puede
+            distinguir una carrera de otra y se mezclarían inscripciones.
+    """
+    date = str(race.get("date") or "").strip()
+    track = _clean_name(race.get("track"))
+    number = race.get("race_number")
+    if not date or not track or number is None or str(number).strip() == "":
+        raise ValueError(
+            "La carrera necesita 'date', 'track' y 'race_number': "
+            f"{ {k: race.get(k) for k in ('date', 'track', 'race_number')} }"
+        )
+    try:
+        return date, track, int(number)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"'race_number' no es un entero: {number!r}") from exc
+
+
+def _upsert_race(conn: sqlite3.Connection, race: dict[str, Any]) -> int:
+    """Inserta o actualiza de forma atómica una carrera por fecha, hipódromo y número.
+
+    ``distance`` y ``surface`` solo se actualizan si llegan con valor.
+    """
+    key = _race_key(race)
+    conn.execute(
         """
         INSERT INTO races (date, track, distance, surface, race_number)
         VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(date, track, race_number) DO UPDATE SET
+            distance = COALESCE(excluded.distance, races.distance),
+            surface = COALESCE(excluded.surface, races.surface)
         """,
         (key[0], key[1], race.get("distance"), race.get("surface"), key[2]),
     )
-    return int(cur.lastrowid)
+    row = conn.execute(
+        "SELECT id FROM races WHERE date = ? AND track = ? AND race_number = ?", key
+    ).fetchone()
+    return int(row["id"])
 
 
 def upsert_race(race: dict[str, Any], db_path: str | None = None) -> int:
     """Inserta o actualiza una carrera.
 
     Args:
-        race: diccionario con ``date``, ``track``, ``race_number`` y,
-            opcionalmente, ``distance`` y ``surface``.
+        race: diccionario con ``date``, ``track``, ``race_number``
+            (obligatorios) y, opcionalmente, ``distance`` y ``surface``.
 
     Returns:
         El ``id`` de la carrera.
+
+    Raises:
+        ValueError: si falta fecha, hipódromo o número de carrera.
     """
     with get_connection(db_path) as conn:
         return _upsert_race(conn, race)
@@ -244,6 +281,9 @@ def save_entries(
 
     Returns:
         Número de inscripciones guardadas.
+
+    Raises:
+        ValueError: si la carrera no tiene clave completa (no se guarda nada).
     """
     saved = 0
     with get_connection(db_path) as conn:
@@ -302,7 +342,7 @@ def get_horse(name: str, db_path: str | None = None) -> dict[str, Any] | None:
     """Devuelve los datos de un caballo por nombre, o ``None`` si no existe."""
     with get_connection(db_path) as conn:
         row = conn.execute(
-            "SELECT * FROM horses WHERE name = ?", ((name or "").strip(),)
+            "SELECT * FROM horses WHERE name_key = ?", (name_key(name),)
         ).fetchone()
     return dict(row) if row else None
 

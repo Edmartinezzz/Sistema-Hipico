@@ -146,3 +146,41 @@ def test_save_enrichment_y_lectura_json(db_path):
 def test_enrichment_requiere_caballo_existente(db_path):
     with pytest.raises(sqlite3.IntegrityError):
         database.save_enrichment(9999, "csv_local", {}, db_path)
+
+
+def test_upsert_horse_unifica_mayusculas_acentuadas(db_path):
+    database.save_entries(RACE, [{"horse_name": "Relámpago"}], db_path)
+    database.save_entries({**RACE, "race_number": 4}, [{"horse_name": "RELÁMPAGO"}], db_path)
+    database.save_entries({**RACE, "race_number": 5}, [{"horse_name": " relámpago  "}], db_path)
+    for nombre in ("Relámpago", "RELÁMPAGO", "relÁmpago"):
+        history = database.get_horse_history(nombre, db_path)
+        assert history["horse"]["name"] == "Relámpago"
+        assert len(history["entries"]) == 3
+
+
+def test_name_key_normaliza_unicode_y_espacios():
+    compuesto = "Pin\u0303a  Bonita"  # «ñ» como n + tilde combinada
+    assert database.name_key(compuesto) == database.name_key("PIÑA BONITA")
+
+
+@pytest.mark.parametrize("campo", ["date", "track", "race_number"])
+@pytest.mark.parametrize("valor", [None, "", "   "])
+def test_save_entries_rechaza_carrera_sin_clave_completa(db_path, campo, valor):
+    with pytest.raises(ValueError):
+        database.save_entries({**RACE, campo: valor}, [{"horse_name": "Brisa"}], db_path)
+    assert database.get_horse("Brisa", db_path) is None
+
+
+def test_upsert_race_rechaza_numero_no_entero(db_path):
+    with pytest.raises(ValueError):
+        database.upsert_race({**RACE, "race_number": "tercera"}, db_path)
+
+
+def test_upsert_race_conserva_distancia_y_acepta_numero_como_texto(db_path):
+    first = database.upsert_race(RACE, db_path)
+    second = database.upsert_race({**RACE, "race_number": "3", "surface": "grama"}, db_path)
+    assert first == second
+    with database.get_connection(db_path) as conn:
+        row = conn.execute("SELECT * FROM races WHERE id = ?", (first,)).fetchone()
+    assert row["distance"] == "1200m"
+    assert row["surface"] == "grama"
