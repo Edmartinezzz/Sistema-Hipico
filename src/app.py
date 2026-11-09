@@ -131,6 +131,34 @@ def _html(fragmento: str) -> None:
     st.markdown(fragmento, unsafe_allow_html=True)
 
 
+def _parche_pwa() -> None:
+    """Deja la app instalable con su propio logo: inyecta el ``<link
+    rel=manifest>`` en el index que sirve Streamlit y pone nuestro icono
+    como favicon. Idempotente: solo escribe cuando hace falta."""
+    try:
+        import streamlit as _paquete
+
+        estatico = Path(_paquete.__file__).resolve().parent / "static"
+        index = estatico / "index.html"
+        html = index.read_text(encoding="utf-8")
+        if 'rel="manifest"' not in html:
+            index.write_text(
+                html.replace(
+                    "</head>",
+                    '<link rel="manifest" href="app/static/manifest.json"></head>',
+                ),
+                encoding="utf-8",
+            )
+        icono = RAIZ / "src" / "static" / "icon.png"
+        favicon = estatico / "favicon.png"
+        if icono.exists() and (
+            not favicon.exists() or favicon.read_bytes() != icono.read_bytes()
+        ):
+            favicon.write_bytes(icono.read_bytes())
+    except Exception:  # noqa: BLE001
+        logger.exception("No se pudo parchear manifest/favicon de Streamlit")
+
+
 def _inyectar_css() -> None:
     """CSS del tema + fondo degradado azul-negro + manifest PWA."""
     _html(
@@ -1436,6 +1464,7 @@ def main() -> None:
         page_icon=str(RAIZ / "src" / "static" / "icon.png"),
         initial_sidebar_state="collapsed",
     )
+    _parche_pwa()
     _inyectar_css()
     _instalar_app()
 
