@@ -5,7 +5,7 @@ gaveta (programa de carrera) en PDF, los enriquece con fuentes gratuitas, estima
 probabilidades con el modelo de Harville y muestra los resultados en un dashboard
 de Streamlit. La especificación completa está en [`PROJECT_SPEC.md`](PROJECT_SPEC.md).
 
-> Estado: en desarrollo (Sprint 2 — extractor de PDF).
+> Estado: en desarrollo (Sprint 5 — dashboard Streamlit).
 
 ## Requisitos
 
@@ -45,6 +45,17 @@ database.save_entries(
 )
 print(database.get_horse_history("Relámpago"))
 ```
+
+## Abrir el dashboard
+
+```bash
+streamlit run src/app.py
+```
+
+Se abre en el navegador (http://localhost:8501). Sube una gaveta en PDF y pulsa **Analizar**,
+o usa **Usar gaveta de ejemplo**. Verás una tabla por carrera con Caballo, Jinete, Cuota,
+Prob. modelo, Prob. mercado y Edge; las filas con value bet salen en verde. Abajo está el
+detalle por caballo.
 
 ## Extraer una gaveta en PDF
 
