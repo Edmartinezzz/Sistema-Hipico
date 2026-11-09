@@ -132,3 +132,12 @@ def test_analyze_pdf_sin_fecha_no_guarda_pero_analiza(tmp_path, db):
     resultado = pipeline.analyze_pdf(pdf, db_path=db)
     assert len(resultado["races"]) == 2
     assert any("no se guarda" in w for w in resultado["warnings"])
+
+
+def test_analyze_race_sin_victorias_y_peso_cero_usa_el_mercado():
+    filas = pipeline.analyze_race(
+        [_caballo("A", 2.0, "5-0-1-1"), _caballo("B", 3.0, "8-0-2-2")], prior_weight=0.0
+    )
+    assert sum(f["model_prob"] for f in filas) == pytest.approx(1.0)
+    for fila in filas:
+        assert fila["model_prob"] == pytest.approx(fila["market_prob"])

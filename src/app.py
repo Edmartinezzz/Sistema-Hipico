@@ -85,9 +85,16 @@ def _save_upload(uploaded) -> Path:
 
 
 def _save_csv_upload(uploaded) -> Path:
+    """Guarda el CSV subido una sola vez por archivo y borra el anterior."""
+    saved = st.session_state.get("csv_upload")
+    if saved and saved["id"] == uploaded.file_id and Path(saved["path"]).exists():
+        return Path(saved["path"])
+    if saved:
+        Path(saved["path"]).unlink(missing_ok=True)
     handle = tempfile.NamedTemporaryFile(prefix="historial_", suffix=".csv", delete=False)
     with handle:
         handle.write(uploaded.getvalue())
+    st.session_state["csv_upload"] = {"id": uploaded.file_id, "path": handle.name}
     return Path(handle.name)
 
 
@@ -221,7 +228,11 @@ def main() -> None:
 
     try:
         if analyze and uploaded is not None:
-            _run_analysis(_save_upload(uploaded), uploaded.name, options)
+            pdf_path = _save_upload(uploaded)
+            try:
+                _run_analysis(pdf_path, uploaded.name, options)
+            finally:
+                pdf_path.unlink(missing_ok=True)
         elif sample:
             path = Path(tempfile.gettempdir()) / "gaveta_ejemplo.pdf"
             sample_data.create_sample_gaveta(path)
