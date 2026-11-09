@@ -131,3 +131,9 @@ def test_kelly_fraction():
     for prob, cuota in ((1.5, 2.0), (-0.1, 2.0), (0.5, 1.0), (0.5, float("nan"))):
         with pytest.raises(ValueError):
             kelly_fraction(prob, cuota)
+
+
+@pytest.mark.parametrize(("first", "second"), [(-1, 0), (0, -1), (3, 0)])
+def test_exacta_rechaza_indices_fuera_de_rango(first, second):
+    with pytest.raises(IndexError):
+        harville_exacta_probability([0.5, 0.3, 0.2], first, second)
