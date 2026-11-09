@@ -283,3 +283,25 @@ def test_enrich_horse_csv_con_columna_source_no_duplica(db, tmp_path):
     scraper.enrich_horse("Alfa", db, offline=True, csv_path=archivo)
     assert scraper.enrich_horse("Alfa", db, offline=True, csv_path=archivo)["cached"] is True
     assert len(database.get_horse_history("Alfa", db)["enrichment"]) == 1
+
+
+@responses.activate
+def test_rate_limited_get_corta_bucles_de_redireccion(sin_esperas):
+    responses.get(URL, status=302, headers={"Location": URL})
+    with pytest.raises(requests.TooManyRedirects):
+        scraper.rate_limited_get(URL, min_interval=0)
+    assert len(responses.calls) == scraper.MAX_REDIRECTS + 1
+
+
+@responses.activate
+def test_rate_limited_get_sin_seguir_redirecciones_no_espera(sin_esperas):
+    responses.get(URL, status=302, headers={"Location": "/otra"})
+    respuesta = scraper.rate_limited_get(URL, allow_redirects=False, min_interval=1.0)
+    assert respuesta.status_code == 302
+    assert sin_esperas == []
+
+
+@responses.activate
+def test_rate_limited_get_acepta_hook_vacio():
+    responses.get(URL, json={"ok": True})
+    assert scraper.rate_limited_get(URL, hooks={"response": None}).json() == {"ok": True}
