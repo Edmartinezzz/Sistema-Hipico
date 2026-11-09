@@ -181,17 +181,7 @@ a[href*="share.streamlit.io"][data-testid] {display: none !important;}
 .tile .x {color: #8FB9A8; font-size: .72rem;}
 .m-h {font-family: Georgia, serif; font-size: 1.15rem; font-weight: 700; margin: .6rem 0 .4rem;}
 
-/* Herramientas en la barra inferior: fila horizontal compacta (con iconos) */
-.st-key-m_tools {margin-bottom: .2rem !important;}
-.st-key-m_tools [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .4rem !important;}
-.st-key-m_tools [data-testid="stColumn"] {flex: 1 1 0 !important; min-width: 0 !important;}
-.st-key-m_tools button {width: 100% !important; min-height: 2.3rem !important;
-  font-weight: 600 !important; font-size: .8rem !important; border-radius: .6rem !important;
-  background: transparent !important; border: 1px solid #2A5A44 !important;
-  padding: .35rem .2rem !important;}
-.st-key-m_tools [data-testid="stColumn"]:nth-child(1) button::before {content: "📅  ";}
-.st-key-m_tools [data-testid="stColumn"]:nth-child(2) button::before {content: "📄  ";}
-.st-key-m_tools [data-testid="stColumn"]:nth-child(3) button::before {content: "⚙️  ";}
+/* Herramientas (sección Config): popovers/inputs ya quedan en pantalla. */
 
 /* Lista de carreras: cada botón es una fila-tarjeta */
 .st-key-m_lista button {width: 100%; justify-content: flex-start !important; text-align: left;
@@ -217,17 +207,10 @@ div[class*="st-key-m_ficha_"] button {padding: 0 .4rem !important; min-height: 1
 div[data-testid="stMetric"] {padding: .5rem .7rem !important;}
 div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
 
-/* Barra inferior plana tipo app: páginas que se deslizan (iconos | herramientas). */
+/* Barra inferior plana tipo app: una fila de iconos, sin deslizamiento. */
 .st-key-m_nav {position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
   background: #0A1A12; border-top: 1px solid #2A5A44;
   padding: .4rem .5rem calc(.45rem + env(safe-area-inset-bottom));}
-.st-key-m_nav {display: flex !important; flex-direction: row !important;
-  overflow-x: auto !important;
-  scrollbar-width: none; -webkit-overflow-scrolling: touch;}
-.st-key-m_nav::-webkit-scrollbar {display: none;}
-.st-key-m_nav > * {width: 88% !important; min-width: 88% !important;
-  flex-shrink: 0 !important;}
-.st-key-m_nav > *:last-child {width: 72% !important; min-width: 72% !important;}
 .st-key-m_nav [data-testid="stButtonGroup"], .st-key-m_nav [data-testid="stButtonGroup"] > div {
   width: 100% !important; display: flex !important; flex-wrap: nowrap !important; gap: 0 !important;}
 .st-key-m_nav [data-testid="stButtonGroup"] button {flex: 1 1 0 !important; min-width: 0 !important;
@@ -241,6 +224,7 @@ div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
 .st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(4)::before {content: "📺";}
 .st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(5)::before {content: "📊";}
 .st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(6)::before {content: "💬";}
+.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(7)::before {content: "⚙️";}
 /* Solo iconos: el texto queda oculto pero la sección elegida queda dorada. */
 .st-key-m_nav [data-testid="stButtonGroup"] button p {display: none !important;}
 .st-key-m_nav [data-testid="stButtonGroup"] button[aria-checked="true"] {

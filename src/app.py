@@ -1162,7 +1162,7 @@ def _tab_chat() -> None:
 
 # -------------------------------------------------------------- vista móvil
 
-SECCIONES_MOVIL = ["Resumen", "Domingo", "Carrera", "En vivo", "Lab", "Chat"]
+SECCIONES_MOVIL = ["Resumen", "Domingo", "Carrera", "En vivo", "Lab", "Chat", "Config"]
 
 
 def _vista() -> str:
@@ -1199,36 +1199,29 @@ def _vista_movil() -> None:
         sub = str(meta.get("track") or "Análisis estadístico hípico")
     _html(ui.barra_superior("Sistema Hípico", sub))
 
-    umbral = 0.05
+    umbral = float(st.session_state.get("umbral", 0.05))
     _aviso_ocr()
 
-    # Barra inferior deslizable: página 1 = secciones, página 2 = herramientas.
+    # Barra inferior: solo iconos de sección (Config abre las herramientas).
     with st.container(key="m_nav"):
         seccion = st.segmented_control(
             "Sección", SECCIONES_MOVIL, required=True, key="m_sec",
             default="Resumen", label_visibility="collapsed", width="stretch",
         ) or "Resumen"
-        with st.container(key="m_tools"):
-            c_semana, c_pdf, c_ajustes = st.columns(3)
-            with c_semana.popover("Semana"):
-                dia = st.date_input("Semana", key="semana", format="DD/MM/YYYY")
-                semana = _selector_reunion(dia, reuniones)
-                _nota_semana(dia, reuniones, semana)
-            with c_pdf.popover("PDF"):
-                offline = st.toggle("Enriquecimiento offline", value=True)
-                _cargar_pdf(offline)
-            with c_ajustes.popover("Ajustes"):
-                umbral = st.slider("Umbral de value bet", 0.0, 0.20, 0.05, 0.01)
-                st.caption("Uso informativo: no constituye recomendación de apuesta.")
 
     if not st.session_state.get("registros"):
-        _html(ui.hero(
-            "Sistema Hípico", "Análisis Estadístico de Caballos",
-            "Abre «Semana» y elige la reunión para cargar la gaceta.",
-        ))
+        if seccion == "Config":
+            _movil_config(reuniones)
+        else:
+            _html(ui.hero(
+                "Sistema Hípico", "Análisis Estadístico de Caballos",
+                "Toca el icono ⚙️ (Config) y elige la semana para cargar la gaceta.",
+            ))
         return
     if seccion == "Domingo":
         _tab_domingo()
+    elif seccion == "Config":
+        _movil_config(reuniones)
     elif seccion == "Carrera":
         _movil_carrera(umbral)
     elif seccion == "En vivo":
@@ -1239,6 +1232,24 @@ def _vista_movil() -> None:
         _tab_chat()
     else:
         _movil_resumen(umbral)
+
+
+def _movil_config(reuniones: list[dict]) -> None:
+    """Sección Config del móvil: semana/reunión, PDF y ajustes en pantalla completa."""
+    st.markdown("### Configuración")
+    _html('<div class="m-h">Semana y reunión</div>')
+    dia = st.date_input("Semana", key="semana", format="DD/MM/YYYY")
+    semana = _selector_reunion(dia, reuniones)
+    _nota_semana(dia, reuniones, semana)
+    st.divider()
+    _html('<div class="m-h">Gaceta en PDF</div>')
+    offline = st.toggle("Enriquecimiento offline", value=True)
+    _cargar_pdf(offline)
+    st.divider()
+    _html('<div class="m-h">Ajustes</div>')
+    st.slider("Umbral de value bet", 0.0, 0.20, key="umbral",
+              value=float(st.session_state.get("umbral", 0.05)), step=0.01)
+    st.caption("Uso informativo: no constituye recomendación de apuesta.")
 
 
 def _movil_resumen(umbral: float) -> None:

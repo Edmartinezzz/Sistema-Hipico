@@ -76,8 +76,8 @@ def test_app_movil_resumen_y_carrera():
     at.run()
     assert not at.exception
     assert not at.tabs  # la vista móvil no usa pestañas
-    # Barra superior + acciones en popovers + navegación inferior.
-    assert len(at.get("popover")) == 3  # Semana, PDF y Ajustes
+    # Barra superior + navegación inferior (las herramientas son la sección Config).
+    assert len(at.get("popover")) == 0
     nav = at.segmented_control[0]
     assert nav.value == "Resumen"
     # Lista de carreras como botones grandes.
@@ -98,7 +98,11 @@ def test_app_movil_sin_reunion():
     at = _app_movil().run()
     assert not at.exception
     assert at.segmented_control[0].value == "Resumen"
-    assert any("elige la reunión" in m.value for m in at.markdown)
+    assert any("elige la semana" in m.value for m in at.markdown)
+    # La sección Config está accesible sin reunión cargada.
+    at.segmented_control[0].set_value("Config").run()
+    assert not at.exception
+    assert at.date_input[0].label == "Semana"
 
 
 def test_app_muestra_reunion_cargada():
