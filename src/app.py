@@ -132,7 +132,15 @@ def _html(fragmento: str) -> None:
 
 
 def _inyectar_css() -> None:
-    """CSS del tema + fondo degradado azul-negro (estilo app)."""
+    """CSS del tema + fondo degradado azul-negro + manifest PWA."""
+    _html(
+        '<link rel="manifest" href="app/static/manifest.json">'
+        '<meta name="theme-color" content="#060A12">'
+        '<meta name="mobile-web-app-capable" content="yes">'
+        '<meta name="apple-mobile-web-app-capable" content="yes">'
+        '<meta name="apple-mobile-web-app-title" content="Hípico">'
+        '<link rel="apple-touch-icon" href="app/static/icon-180.png">'
+    )
     _html(ui.CSS + (
         "<style>.stApp{background:"
         "radial-gradient(1100px 550px at 80% -10%, rgba(22,104,196,.35), transparent 55%),"
@@ -1252,6 +1260,9 @@ def _movil_config(reuniones: list[dict]) -> None:
     _html('<div class="m-h">Ajustes</div>')
     st.slider("Umbral de value bet", 0.0, 0.20, key="umbral",
               value=float(st.session_state.get("umbral", 0.05)), step=0.01)
+    if st.button("📲 Instalar app", key="m_instalar", width="stretch"):
+        st.session_state["_mostrar_instalar"] = True
+        st.rerun()
     st.caption("Uso informativo: no constituye recomendación de apuesta.")
 
 
@@ -1392,14 +1403,41 @@ def _movil_carrera(umbral: float) -> None:
         _tabla(filas)
 
 
+@st.dialog("Instala Sistema Hípico")
+def _dialogo_instalar() -> None:
+    """Ventana con los pasos para instalar la app como PWA."""
+    st.markdown("Abre la app desde tu pantalla como una aplicación:")
+    st.markdown(
+        "**Android (Chrome):** menú **⋮** (arriba a la derecha) → "
+        "**Instalar app** o **Añadir a pantalla principal**.\n\n"
+        "**iPhone (Safari):** botón **compartir** → **Añadir a pantalla de inicio**.\n\n"
+        "**PC (Chrome/Edge):** icono de instalar en la barra de direcciones "
+        "o menú **⋮** → **Guardar y compartir → Instalar página como app**."
+    )
+    if st.button("Entendido", type="primary", width="stretch"):
+        st.session_state["_mostrar_instalar"] = False
+        st.rerun()
+
+
+def _instalar_app() -> None:
+    """Muestra la ventana de instalación una vez por sesión."""
+    if "_mostrar_instalar" not in st.session_state:
+        st.session_state["_mostrar_instalar"] = True
+    if st.session_state["_mostrar_instalar"]:
+        _dialogo_instalar()
+
+
 # ---------------------------------------------------------------------- main
 
 
 def main() -> None:
     st.set_page_config(
-        page_title="Sistema Hípico", layout="wide", initial_sidebar_state="collapsed"
+        page_title="Sistema Hípico", layout="wide",
+        page_icon=str(RAIZ / "src" / "static" / "icon.png"),
+        initial_sidebar_state="collapsed",
     )
     _inyectar_css()
+    _instalar_app()
 
     try:
         init_db(DB_PATH)

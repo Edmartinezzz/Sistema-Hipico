@@ -81,10 +81,10 @@ def test_app_movil_resumen_y_carrera():
     assert not at.segmented_control
     assert at.session_state["m_sec"] == "Resumen"
     assert at.session_state["m_nav_abierto"] is False
-    assert not any(b.key.startswith("m_nav_") for b in at.button)
+    assert not any((b.key or "").startswith("m_nav_") for b in at.button)
     # Abrir el menú con ☰: aparecen los 7 iconos de sección.
     at.button(key="m_hamb_btn").click().run()
-    nav = {b.key: b for b in at.button if b.key.startswith("m_nav_")}
+    nav = {b.key: b for b in at.button if (b.key or "").startswith("m_nav_")}
     assert set(nav) == {f"m_nav_{s}" for s in (
         "Resumen", "Domingo", "Carrera", "En vivo", "Lab", "Chat", "Config")}
     # Lista de carreras como botones grandes.

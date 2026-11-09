@@ -240,8 +240,10 @@ div[class*="st-key-m_ficha_"] button {transition: transform .1s ease,
 .horse-card {margin-bottom: 0 !important;}
 .horse-card .rank {display: none;}
 div[class*="st-key-m_ficha_"] {margin-top: -.55rem; display: flex; justify-content: flex-end;}
-div[class*="st-key-m_ficha_"] button {padding: 0 .4rem !important; min-height: 1.8rem !important;
-  font-size: .8rem; color: #7CC4FF !important;}
+div[class*="st-key-m_ficha_"] button {padding: .3rem .8rem !important; min-height: 2rem !important;
+  font-size: .82rem !important; font-weight: 700 !important; color: #7CC4FF !important;
+  background: rgba(59,155,255,.12) !important; border: 1px solid #2E4A75 !important;
+  border-radius: .7rem !important;}
 div[class*="st-key-m_ficha_"] button:active {transform: scale(.94);}
 
 /* Indicadores de Streamlit más compactos (Laboratorio) */
