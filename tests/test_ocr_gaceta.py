@@ -74,3 +74,24 @@ def test_asignar_cuotas_tolera_errores_de_ocr():
     assert asignar_cuotas([(1, "ELTRUEN0"), (2, "5/1")], ["EL TRUENO"]) == {"EL TRUENO": 6.0}
     # Las fechas dd/mm/aa no se confunden con cuotas.
     assert asignar_cuotas([(1, "ADEMAN"), (2, "11/03/18")], ["ADEMAN"]) == {}
+
+
+def test_cache_ocr(tmp_path, monkeypatch):
+    from src import ocr_gaceta
+
+    monkeypatch.setattr(ocr_gaceta, "CACHE_DIR", tmp_path)
+    pdf = b"%PDF-falso"
+    assert ocr_gaceta.leer_cache(pdf) is None
+    resultado = {
+        "fecha": date(2026, 11, 8),
+        "cuotas": {(3, "FUEGO"): 2.5, (3, "REY"): 8.0},
+        "paginas": 2,
+        "carreras": [3],
+    }
+    ocr_gaceta.guardar_cache(pdf, resultado)
+    leido = ocr_gaceta.leer_cache(pdf)
+    assert leido["fecha"] == date(2026, 11, 8)
+    assert leido["cuotas"] == {(3, "FUEGO"): 2.5, (3, "REY"): 8.0}
+    assert leido["carreras"] == [3]
+    # Otro PDF no tiene caché.
+    assert ocr_gaceta.leer_cache(b"otro") is None

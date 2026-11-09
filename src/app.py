@@ -355,59 +355,6 @@ def _nombres_reunion(fecha: date | None) -> tuple[dict | None, dict[int, list[st
     return reunion, nombres
 
 
-OCR_CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "ocr_cache"
-
-
-def _ocr_cache_leer(pdf_bytes: bytes) -> dict | None:
-    """Resultado OCR guardado para este PDF exacto (mismo sha256), o None."""
-    import hashlib
-    import json
-
-    ruta = OCR_CACHE_DIR / f"{hashlib.sha256(pdf_bytes).hexdigest()}.json"
-    try:
-        datos = json.loads(ruta.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    cuotas = {}
-    for clave, cuota in (datos.get("cuotas") or {}).items():
-        n_txt, _, nombre = str(clave).partition("|")
-        cuotas[(int(n_txt), nombre)] = cuota
-    fecha_txt = datos.get("fecha")
-    return {
-        "fecha": date.fromisoformat(fecha_txt) if fecha_txt else None,
-        "cuotas": cuotas,
-        "paginas": datos.get("paginas"),
-        "carreras": datos.get("carreras") or [],
-    }
-
-
-def _ocr_cache_guardar(pdf_bytes: bytes, resultado: dict) -> None:
-    import hashlib
-    import json
-
-    try:
-        OCR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        ruta = OCR_CACHE_DIR / f"{hashlib.sha256(pdf_bytes).hexdigest()}.json"
-        ruta.write_text(
-            json.dumps(
-                {
-                    "fecha": resultado["fecha"].isoformat()
-                    if resultado.get("fecha")
-                    else None,
-                    "cuotas": {
-                        f"{n}|{nombre}": c
-                        for (n, nombre), c in resultado["cuotas"].items()
-                    },
-                    "paginas": resultado.get("paginas"),
-                    "carreras": resultado.get("carreras") or [],
-                }
-            ),
-            encoding="utf-8",
-        )
-    except (OSError, TypeError, ValueError) as exc:
-        logger.warning("No se pudo guardar la caché del OCR: %s", exc)
-
-
 def _leer_cuotas_escaneadas(tmp_path: str) -> None:
     """PDF escaneado: OCR de las cuotas ML + reunión de la web de esa fecha."""
     if not ocr_gaceta.disponible():
@@ -424,7 +371,7 @@ def _leer_cuotas_escaneadas(tmp_path: str) -> None:
         return por_carrera
 
     pdf_bytes = Path(tmp_path).read_bytes()
-    resultado = _ocr_cache_leer(pdf_bytes)
+    resultado = ocr_gaceta.leer_cache(pdf_bytes)
     if resultado is not None:
         nombres(resultado.get("fecha"))
         st.caption("Este PDF ya fue leído antes: se usan las cuotas guardadas.")
@@ -436,7 +383,7 @@ def _leer_cuotas_escaneadas(tmp_path: str) -> None:
 
         resultado = ocr_gaceta.leer_gaceta(tmp_path, nombres, progreso)
         barra.empty()
-        _ocr_cache_guardar(pdf_bytes, resultado)
+        ocr_gaceta.guardar_cache(pdf_bytes, resultado)
     if not reunion_usada:
         fecha = resultado["fecha"]
         st.warning(

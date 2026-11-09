@@ -18,10 +18,13 @@ Cada cuota se asigna al último nombre (de la reunión web) leído encima.
 from __future__ import annotations
 
 import difflib
+import hashlib
+import json
 import logging
 import re
 import unicodedata
 from datetime import date
+from pathlib import Path
 from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
@@ -208,3 +211,55 @@ def leer_gaceta(
         "paginas": len(paginas),
         "carreras": sorted({p["carrera"] for p in paginas}),
     }
+
+
+# ------------------------------------------------------------- caché por PDF
+
+CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "ocr_cache"
+
+
+def _ruta_cache(pdf_bytes: bytes) -> Path:
+    return CACHE_DIR / f"{hashlib.sha256(pdf_bytes).hexdigest()}.json"
+
+
+def leer_cache(pdf_bytes: bytes) -> dict[str, Any] | None:
+    """Resultado de ``leer_gaceta`` guardado para este PDF exacto, o None."""
+    try:
+        datos = json.loads(_ruta_cache(pdf_bytes).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    cuotas = {}
+    for clave, cuota in (datos.get("cuotas") or {}).items():
+        n_txt, _, nombre = str(clave).partition("|")
+        cuotas[(int(n_txt), nombre)] = cuota
+    fecha_txt = datos.get("fecha")
+    return {
+        "fecha": date.fromisoformat(fecha_txt) if fecha_txt else None,
+        "cuotas": cuotas,
+        "paginas": datos.get("paginas"),
+        "carreras": datos.get("carreras") or [],
+    }
+
+
+def guardar_cache(pdf_bytes: bytes, resultado: dict[str, Any]) -> None:
+    """Guarda el resultado del OCR para no repetirlo si se sube el mismo PDF."""
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        _ruta_cache(pdf_bytes).write_text(
+            json.dumps(
+                {
+                    "fecha": resultado["fecha"].isoformat()
+                    if resultado.get("fecha")
+                    else None,
+                    "cuotas": {
+                        f"{n}|{nombre}": c
+                        for (n, nombre), c in resultado["cuotas"].items()
+                    },
+                    "paginas": resultado.get("paginas"),
+                    "carreras": resultado.get("carreras") or [],
+                }
+            ),
+            encoding="utf-8",
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        logger.warning("No se pudo guardar la caché del OCR: %s", exc)
