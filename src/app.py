@@ -1206,18 +1206,25 @@ def _vista_movil() -> None:
     umbral = float(st.session_state.get("umbral", 0.05))
     _aviso_ocr()
 
-    # Riel lateral izquierdo: un icono por sección, siempre visible y
-    # lejos del sello de Streamlit Cloud (abajo a la derecha).
+    # Menú hamburguesa: el riel lateral solo aparece al tocar ☰ y se
+    # cierra al elegir una sección (o al tocar ☰ otra vez).
+    abierto = st.session_state.setdefault("m_nav_abierto", False)
     seccion = st.session_state.setdefault("m_sec", "Resumen")
-    with st.container(key="m_nav"):
-        for nombre in SECCIONES_MOVIL:
-            if st.button(
-                ICONOS_SEC[nombre], key=f"m_nav_{nombre}", help=nombre,
-                type="primary" if nombre == seccion else "secondary",
-                use_container_width=True,
-            ):
-                st.session_state["m_sec"] = nombre
-                st.rerun()
+    with st.container(key="m_hamb"):
+        if st.button("☰", key="m_hamb_btn", help="Menú"):
+            st.session_state["m_nav_abierto"] = not abierto
+            st.rerun()
+    if abierto:
+        with st.container(key="m_nav"):
+            for nombre in SECCIONES_MOVIL:
+                if st.button(
+                    ICONOS_SEC[nombre], key=f"m_nav_{nombre}", help=nombre,
+                    type="primary" if nombre == seccion else "secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state["m_sec"] = nombre
+                    st.session_state["m_nav_abierto"] = False
+                    st.rerun()
 
     if not st.session_state.get("registros"):
         if seccion == "Config":
@@ -1225,7 +1232,7 @@ def _vista_movil() -> None:
         else:
             _html(ui.hero(
                 "Sistema Hípico", "Análisis Estadístico de Caballos",
-                "Toca el icono ⚙️ (Config) y elige la semana para cargar la gaceta.",
+                "Abre el menú ☰, toca ⚙️ (Config) y elige la semana para cargar la gaceta.",
             ))
         return
     if seccion == "Domingo":

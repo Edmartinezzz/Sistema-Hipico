@@ -76,10 +76,14 @@ def test_app_movil_resumen_y_carrera():
     at.run()
     assert not at.exception
     assert not at.tabs  # la vista móvil no usa pestañas
-    # Barra superior + riel lateral de iconos (las herramientas son Config).
+    # Barra superior + botón ☰ que despliega el menú lateral.
     assert len(at.get("popover")) == 0
     assert not at.segmented_control
     assert at.session_state["m_sec"] == "Resumen"
+    assert at.session_state["m_nav_abierto"] is False
+    assert not any(b.key.startswith("m_nav_") for b in at.button)
+    # Abrir el menú con ☰: aparecen los 7 iconos de sección.
+    at.button(key="m_hamb_btn").click().run()
     nav = {b.key: b for b in at.button if b.key.startswith("m_nav_")}
     assert set(nav) == {f"m_nav_{s}" for s in (
         "Resumen", "Domingo", "Carrera", "En vivo", "Lab", "Chat", "Config")}
@@ -91,9 +95,10 @@ def test_app_movil_resumen_y_carrera():
     assert at.session_state["m_sec"] == "Carrera"
     assert at.pills[0].value == 1
     assert sum(b.label == "Ver ficha" for b in at.button) == len(registros)
-    # Sección Domingo accesible desde el riel lateral.
+    # Sección Domingo desde el menú (aún abierto): se cierra al elegir.
     at.button(key="m_nav_Domingo").click().run()
     assert not at.exception
+    assert at.session_state["m_nav_abierto"] is False
     assert any("Pronóstico del domingo" in m.value for m in at.markdown)
 
 
@@ -102,7 +107,8 @@ def test_app_movil_sin_reunion():
     assert not at.exception
     assert at.session_state["m_sec"] == "Resumen"
     assert any("elige la semana" in m.value for m in at.markdown)
-    # La sección Config está accesible sin reunión cargada.
+    # La sección Config está accesible sin reunión cargada (vía menú ☰).
+    at.button(key="m_hamb_btn").click().run()
     at.button(key="m_nav_Config").click().run()
     assert not at.exception
     assert at.date_input[0].label == "Semana"

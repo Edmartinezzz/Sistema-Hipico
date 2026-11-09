@@ -157,11 +157,20 @@ div[data-testid="stDeployButton"], div[data-testid="stAppViewerBadge"],
 .stAppDeployButton, [class*="viewerBadge"], [class*="deployButton"],
 a[href*="share.streamlit.io"][class*="badge"],
 a[href*="share.streamlit.io"][data-testid] {display: none !important;}
-.block-container {padding: .6rem .75rem 1rem 4.4rem !important; max-width: 100% !important;}
+.block-container {padding: .6rem .75rem 1rem !important; max-width: 100% !important;}
 .stMainBlockContainer {padding-top: .6rem !important;}
 
+/* Botón ☰ fijo arriba a la izquierda: abre/cierra el menú lateral. */
+.st-key-m_hamb {position: fixed; left: .45rem; top: .45rem; z-index: 1001;}
+.st-key-m_hamb button {width: 2.9rem; height: 2.9rem; border-radius: .8rem;
+  background: #0A1A12 !important; border: 1px solid #2A5A44 !important;
+  padding: 0 !important; box-shadow: 0 4px 14px rgba(0,0,0,.45);}
+.st-key-m_hamb button p {font-size: 1.4rem !important; margin: 0 !important;
+  color: #D4AF37 !important;}
+
 /* Barra superior */
-.m-top {display: flex; align-items: center; gap: .6rem; margin: .1rem 0 .5rem;}
+.m-top {display: flex; align-items: center; gap: .6rem;
+  margin: .1rem 0 .5rem 3.4rem;}
 .m-logo {width: 2.2rem; height: 2.2rem; border-radius: .6rem; display: flex;
   align-items: center; justify-content: center; font-family: Georgia, serif; font-weight: 800;
   background: linear-gradient(135deg, #D4AF37, #8C6D12); color: #0B1F17; flex-shrink: 0;}
@@ -207,11 +216,12 @@ div[class*="st-key-m_ficha_"] button {padding: 0 .4rem !important; min-height: 1
 div[data-testid="stMetric"] {padding: .5rem .7rem !important;}
 div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
 
-/* Riel lateral izquierdo tipo app: un icono por sección, siempre visible.
-   Queda lejos del sello de Streamlit Cloud (esquina inferior derecha). */
+/* Menú lateral desplegable (se abre con ☰): iconos en vertical,
+   flota sobre el contenido como cajón — el resto del tiempo no ocupa
+   espacio. Empieza debajo del botón ☰ para poder cerrarlo igual. */
 .st-key-m_nav {position: fixed; left: 0; top: 0; bottom: 0; z-index: 1000;
-  width: 3.6rem; background: #0A1A12; border-right: 1px solid #2A5A44;
-  padding: .5rem .35rem;}
+  width: 4.1rem; background: #0A1A12; border-right: 1px solid #2A5A44;
+  padding: 3.6rem .35rem .5rem; box-shadow: 8px 0 24px rgba(0,0,0,.55);}
 .st-key-m_nav > div, .st-key-m_nav [data-testid="stVerticalBlock"] {height: 100%;}
 .st-key-m_nav [data-testid="stVerticalBlock"] {justify-content: center;
   gap: .35rem !important;}
@@ -224,9 +234,9 @@ div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
   background: rgba(212, 175, 55, .22) !important;
   border: 1px solid #D4AF37 !important;}
 
-/* El campo del chat queda libre del riel (izquierda) y del sello (derecha). */
-div[data-testid="stBottomBlockContainer"] {padding-left: 3.8rem !important;
-  padding-right: 4.4rem !important; bottom: 0 !important;}
+/* El campo del chat no queda tapado por el sello (esquina inferior der.). */
+div[data-testid="stBottomBlockContainer"] {padding-right: 4.4rem !important;
+  bottom: 0 !important;}
 div[data-testid="stBottomBlockContainer"] > div {background: transparent !important;
   border-top: none !important;}
 </style>
