@@ -113,9 +113,12 @@ def harville_exacta_probability(strengths: Sequence[float], first: int, second: 
     :math:`P(i, j) = p_i \\cdot p_j / (1 - p_i)`, con :math:`p` = probabilidades
     de victoria normalizadas.
     """
+    p = harville_win_probabilities(strengths)
+    for index in (first, second):
+        if not 0 <= index < len(p):
+            raise IndexError(f"Índice de caballo fuera de rango: {index}")
     if first == second:
         return 0.0
-    p = harville_win_probabilities(strengths)
     return p[first] * _next_place(p, (first,))[second]
 
 
