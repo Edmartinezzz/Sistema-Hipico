@@ -276,7 +276,9 @@ def extract_races(pdf_path: str) -> list[dict]:
                 same_race = header is None or (
                     race is not None and header["race_number"] == race["race_number"]
                 )
-                if header and not (same_race and race is not None):
+                if header and same_race and race is not None:
+                    race = {**race, **{k: v for k, v in header.items() if v is not None}}
+                elif header:
                     race = header
 
                 detected = detect_columns(rows)
