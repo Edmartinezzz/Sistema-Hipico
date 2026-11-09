@@ -262,3 +262,24 @@ def test_enrich_horse_csv_nuevo_reemplaza_la_cache(db, tmp_path):
     assert repetido["cached"] is True
     assert scraper.enrich_horse("Alfa", db, offline=True, csv_path=nuevo)["data"]["wins"] == 6
     assert len(database.get_horse_history("Alfa", db)["enrichment"]) == 2
+
+
+@responses.activate
+def test_rate_limited_get_redireccion_conserva_historial_y_no_filtra_credenciales():
+    responses.get(URL, status=302, headers={"Location": "https://otro.test/x?a=1"})
+    responses.get("https://otro.test/x", json={"ok": True})
+    respuesta = scraper.rate_limited_get(
+        URL, params={"q": "1"}, headers={"Authorization": "Bearer secreto"}, min_interval=0
+    )
+    assert len(respuesta.history) == 1
+    destino = responses.calls[1].request
+    assert "Authorization" not in destino.headers
+    assert destino.url == "https://otro.test/x?a=1"
+
+
+def test_enrich_horse_csv_con_columna_source_no_duplica(db, tmp_path):
+    archivo = tmp_path / "con_fuente.csv"
+    archivo.write_text("name,wins,source\nAlfa,2,kaggle\n", encoding="utf-8")
+    scraper.enrich_horse("Alfa", db, offline=True, csv_path=archivo)
+    assert scraper.enrich_horse("Alfa", db, offline=True, csv_path=archivo)["cached"] is True
+    assert len(database.get_horse_history("Alfa", db)["enrichment"]) == 1
