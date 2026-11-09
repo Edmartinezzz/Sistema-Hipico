@@ -147,9 +147,11 @@ def es_movil(user_agent: str | None) -> bool:
 
 CSS_MOVIL = """
 <style>
-/* Sin barra de Streamlit ni menú lateral: pantalla completa tipo app. */
+/* Sin barra de Streamlit ni menú lateral ni sellos de la plataforma. */
 header[data-testid="stHeader"], div[data-testid="stToolbar"],
-div[data-testid="stSidebarCollapsedControl"], section[data-testid="stSidebar"] {display: none !important;}
+div[data-testid="stSidebarCollapsedControl"], section[data-testid="stSidebar"],
+div[data-testid="stDecoration"], div[data-testid="stStatusWidget"],
+.stAppDeployButton, [class*="viewerBadge"] {display: none !important;}
 .block-container {padding: .6rem .75rem 9.5rem !important; max-width: 100% !important;}
 .stMainBlockContainer {padding-top: .6rem !important;}
 
@@ -174,12 +176,15 @@ div[data-testid="stSidebarCollapsedControl"], section[data-testid="stSidebar"] {
 .tile .x {color: #8FB9A8; font-size: .72rem;}
 .m-h {font-family: Georgia, serif; font-size: 1.15rem; font-weight: 700; margin: .6rem 0 .4rem;}
 
-/* Herramientas dentro de la barra flotante inferior */
+/* Herramientas dentro de la barra flotante inferior (con iconos) */
 .st-key-m_tools {margin-bottom: .45rem !important;}
 .st-key-m_tools button {width: 100% !important; min-height: 2.5rem !important;
   font-weight: 700 !important; font-size: .9rem !important; border-radius: .7rem !important;
   background: #13362A !important; border: 1px solid #2A5A44 !important;
   padding: .4rem .3rem !important;}
+.st-key-m_tools [data-testid="stColumn"]:nth-child(1) button::before {content: "📅  ";}
+.st-key-m_tools [data-testid="stColumn"]:nth-child(2) button::before {content: "📄  ";}
+.st-key-m_tools [data-testid="stColumn"]:nth-child(3) button::before {content: "⚙️  ";}
 
 /* Lista de carreras: cada botón es una fila-tarjeta */
 .st-key-m_lista button {width: 100%; justify-content: flex-start !important; text-align: left;
@@ -214,9 +219,24 @@ div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);}
 .st-key-m_nav [data-testid="stButtonGroup"], .st-key-m_nav [data-testid="stButtonGroup"] > div {
   width: 100% !important; display: flex !important; flex-wrap: nowrap !important;}
-.st-key-m_nav button {flex: 1 1 0 !important; min-width: 0 !important; padding: .55rem .1rem !important;
-  border-radius: .7rem !important; font-weight: 700;}
-.st-key-m_nav button p {font-size: .82rem !important;}
+.st-key-m_nav button {flex: 1 1 0 !important; min-width: 0 !important; padding: .4rem .05rem !important;
+  border-radius: .7rem !important; font-weight: 700;
+  display: flex !important; flex-direction: column !important; align-items: center !important;
+  justify-content: center !important; gap: .1rem;}
+.st-key-m_nav [data-testid="stButtonGroup"] button::before {
+  font-size: 1.1rem; line-height: 1;}
+.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(1)::before {content: "🏠";}
+.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(2)::before {content: "🏇";}
+.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(3)::before {content: "🏁";}
+.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(4)::before {content: "📺";}
+.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(5)::before {content: "📊";}
+.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(6)::before {content: "💬";}
+.st-key-m_nav button p {font-size: .68rem !important; line-height: 1.1 !important;}
+
+/* El campo del chat no queda tapado por la barra flotante. */
+div[data-testid="stBottomBlockContainer"] {bottom: 9rem !important;}
+div[data-testid="stBottomBlockContainer"] > div {background: transparent !important;
+  border-top: none !important;}
 </style>
 """
 
