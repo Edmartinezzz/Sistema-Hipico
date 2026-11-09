@@ -222,11 +222,12 @@ div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
   background: #0A1A12; border-top: 1px solid #2A5A44;
   padding: .4rem .5rem calc(.45rem + env(safe-area-inset-bottom));}
 .st-key-m_nav {display: flex !important; flex-direction: row !important;
-  overflow-x: auto !important; scroll-snap-type: x mandatory;
+  overflow-x: auto !important;
   scrollbar-width: none; -webkit-overflow-scrolling: touch;}
 .st-key-m_nav::-webkit-scrollbar {display: none;}
-.st-key-m_nav > * {min-width: 88% !important; flex-shrink: 0 !important;
-  scroll-snap-align: start;}
+.st-key-m_nav > * {width: 88% !important; min-width: 88% !important;
+  flex-shrink: 0 !important;}
+.st-key-m_nav > *:last-child {width: 72% !important; min-width: 72% !important;}
 .st-key-m_nav [data-testid="stButtonGroup"], .st-key-m_nav [data-testid="stButtonGroup"] > div {
   width: 100% !important; display: flex !important; flex-wrap: nowrap !important; gap: 0 !important;}
 .st-key-m_nav [data-testid="stButtonGroup"] button {flex: 1 1 0 !important; min-width: 0 !important;
