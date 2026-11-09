@@ -131,28 +131,14 @@ def _html(fragmento: str) -> None:
     st.markdown(fragmento, unsafe_allow_html=True)
 
 
-@st.cache_data(show_spinner=False)
-def _fondo_data_uri() -> str:
-    """Foto de fondo en base64 (Streamlit no sirve estáticos del proyecto)."""
-    import base64
-
-    ruta = RAIZ / "src" / "fondo.jpg"
-    if not ruta.exists():
-        return ""
-    return "data:image/jpeg;base64," + base64.b64encode(ruta.read_bytes()).decode()
-
-
 def _inyectar_css() -> None:
-    """CSS del tema + foto de fondo con velo oscuro para leer el texto."""
-    css = ui.CSS
-    fondo = _fondo_data_uri()
-    if fondo:
-        css += (
-            "<style>.stApp{background:linear-gradient(rgba(5,14,10,.68),"
-            f"rgba(5,14,10,.68)),url('{fondo}') center/cover fixed no-repeat"
-            " !important;}</style>"
-        )
-    _html(css)
+    """CSS del tema + fondo degradado azul-negro (estilo app)."""
+    _html(ui.CSS + (
+        "<style>.stApp{background:"
+        "radial-gradient(1100px 550px at 80% -10%, rgba(22,104,196,.35), transparent 55%),"
+        "linear-gradient(165deg, #060A12 0%, #0A1220 60%, #0A1A2E 100%)"
+        " !important;}</style>"
+    ))
 
 
 def _estado(caballos: list[dict]) -> str | None:

@@ -1,18 +1,18 @@
-# Tema visual del Sistema Hípico: verde pista + dorado sobre fondo oscuro.
+# Tema visual del Sistema Hípico: azul/blanco/negro estilo app Android.
 # Para un tema claro cambia base = "light" y ajusta los colores.
 
 [theme]
 base = "dark"
-primaryColor = "#D4AF37"
-backgroundColor = "#0B1F17"
-secondaryBackgroundColor = "#13362A"
-textColor = "#F2EBD9"
-linkColor = "#E8C766"
-borderColor = "#2A5A44"
+primaryColor = "#3B9DFF"
+backgroundColor = "#060A12"
+secondaryBackgroundColor = "#0E1626"
+textColor = "#F2F6FC"
+linkColor = "#7CC4FF"
+borderColor = "#1E2C47"
 showWidgetBorder = true
 baseRadius = "0.75rem"
-headingFont = "serif"
-chartCategoricalColors = ["#D4AF37", "#3FA37C", "#E8E1CF", "#8FB9A8", "#C0392B"]
+headingFont = "sans serif"
+chartCategoricalColors = ["#3B9DFF", "#7CC4FF", "#F2F6FC", "#5A6E90", "#E5484D"]
 
 [browser]
 gatherUsageStats = false

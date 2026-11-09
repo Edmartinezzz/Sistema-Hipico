@@ -16,9 +16,9 @@ from typing import Any
 import altair as alt
 import pandas as pd
 
-DORADO = "#D4AF37"
-VERDE = "#3FA37C"
-CREMA = "#E8E1CF"
+AZUL = "#3B9DFF"
+AZUL_SUAVE = "#7CC4FF"
+BLANCO = "#F2F6FC"
 
 MESES = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
@@ -38,69 +38,88 @@ MANTILLAS = {
 
 CSS = """
 <style>
+:root {--azul:#3B9DFF; --azul2:#7CC4FF; --panel:#0E1626; --borde:#1E2C47;
+  --texto:#F2F6FC; --muted:#9FB0C7; --rojo:#E5484D;}
 .block-container {padding-top: 1.2rem; max-width: 1200px;}
+@keyframes entrada {from {opacity: 0; transform: translateY(12px);}
+  to {opacity: 1; transform: none;}}
+@keyframes brillo {0% {background-position: -60% 0;} 100% {background-position: 160% 0;}}
+@keyframes cajon {from {transform: translateX(-100%);} to {transform: translateX(0);}}
 .hero {
-  background: radial-gradient(circle at 85% 20%, rgba(212,175,55,.25), transparent 45%),
-              linear-gradient(135deg, #0F3B2B 0%, #0B1F17 70%);
-  border: 1px solid #2A5A44; border-radius: 1rem; padding: 1.3rem 1.5rem;
+  background: radial-gradient(circle at 85% 20%, rgba(59,155,255,.3), transparent 45%),
+              linear-gradient(135deg, #0D2138 0%, #070D18 70%);
+  border: 1px solid var(--borde); border-radius: 1.1rem; padding: 1.3rem 1.5rem;
   margin-bottom: 1rem; position: relative; overflow: hidden;
+  box-shadow: 0 14px 36px rgba(0,0,0,.45);
+  animation: entrada .35s ease both;
 }
 .hero::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
-  background: repeating-linear-gradient(90deg, #D4AF37 0 24px, transparent 24px 36px);
-  opacity: .55;
+  background: repeating-linear-gradient(90deg, #3B9DFF 0 24px, transparent 24px 36px);
+  opacity: .6;
 }
-.hero .kicker {color: #D4AF37; letter-spacing: .18em; font-size: .75rem;
+.hero .kicker {color: var(--azul2); letter-spacing: .18em; font-size: .75rem;
   text-transform: uppercase; font-weight: 700;}
 .hero h1 {font-family: Georgia, serif; font-size: 2.1rem; margin: .2rem 0 .1rem;
-  color: #F2EBD9; line-height: 1.15;}
-.hero .sub {color: #C9C2AE; font-size: 1rem; margin-bottom: .6rem;}
+  color: var(--texto); line-height: 1.15;}
+.hero .sub {color: var(--muted); font-size: 1rem; margin-bottom: .6rem;}
 .chip {display: inline-block; padding: .15rem .6rem; border-radius: 999px;
   font-size: .75rem; font-weight: 700; margin: 0 .3rem .3rem 0; letter-spacing: .02em;
   border: 1px solid transparent; white-space: nowrap;}
-.chip-por_correr {background: rgba(63,163,124,.18); color: #7FE0B4; border-color: #3FA37C;}
-.chip-finalizada {background: rgba(255,255,255,.06); color: #B8B2A2; border-color: #4A5A52;}
-.chip-en_curso {background: rgba(192,57,43,.2); color: #FF8A7A; border-color: #C0392B;}
-.chip-value {background: rgba(212,175,55,.2); color: #F5D776; border-color: #D4AF37;}
-.chip-acierto {background: rgba(63,163,124,.25); color: #9BF0C8; border-color: #3FA37C;}
-.chip-info {background: rgba(232,225,207,.08); color: #E8E1CF; border-color: #4A5A52;}
+.chip-por_correr {background: rgba(59,155,255,.16); color: #8FCBFF; border-color: #2E7FD1;}
+.chip-finalizada {background: rgba(255,255,255,.06); color: var(--muted); border-color: #2A3A55;}
+.chip-en_curso {background: rgba(229,72,77,.22); color: #FF8A80; border-color: #C0392B;}
+.chip-value {background: rgba(59,155,255,.22); color: #9ED1FF; border-color: var(--azul);}
+.chip-acierto {background: rgba(124,196,255,.2); color: #B4DEFF; border-color: var(--azul2);}
+.chip-info {background: rgba(242,246,252,.07); color: #C9D4E6; border-color: #2A3A55;}
 .saddle {display: inline-flex; align-items: center; justify-content: center;
   width: 2.3rem; height: 2.3rem; border-radius: .55rem; font-weight: 800;
   font-size: 1.05rem; box-shadow: 0 2px 6px rgba(0,0,0,.35); flex-shrink: 0;
   border: 1px solid rgba(0,0,0,.25);}
 .saddle.sm {width: 1.7rem; height: 1.7rem; font-size: .85rem; border-radius: .4rem;}
-.race-card {background: #13362A; border: 1px solid #2A5A44; border-radius: .9rem;
-  padding: .9rem 1rem; height: 100%; margin-bottom: .8rem;}
+.race-card {background: var(--panel); border: 1px solid var(--borde); border-radius: 1rem;
+  padding: .9rem 1rem; height: 100%; margin-bottom: .8rem;
+  animation: entrada .35s ease both;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;}
+.race-card:hover {transform: translateY(-2px); border-color: #2E4A75;
+  box-shadow: 0 10px 26px rgba(0,0,0,.4);}
 .race-card .head {display: flex; justify-content: space-between; align-items: baseline;}
-.race-card .num {font-family: Georgia, serif; font-size: 1.5rem; color: #D4AF37; font-weight: 700;}
-.race-card .dist {color: #C9C2AE; font-size: .85rem;}
+.race-card .num {font-family: Georgia, serif; font-size: 1.5rem; color: var(--azul); font-weight: 700;}
+.race-card .dist {color: var(--muted); font-size: .85rem;}
 .podium-row {display: flex; align-items: center; gap: .5rem; margin: .35rem 0;}
-.podium-row .pos {width: 1.3rem; color: #8FB9A8; font-weight: 700; font-size: .8rem;}
+.podium-row .pos {width: 1.3rem; color: #7C8DB0; font-weight: 700; font-size: .8rem;}
 .podium-row .name {flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;}
-.podium-row .pct {color: #D4AF37; font-weight: 700; font-size: .9rem;}
-.race-card .foot {margin-top: .5rem; font-size: .8rem; color: #C9C2AE;}
-.horse-card {display: flex; gap: .8rem; align-items: center; background: #13362A;
-  border: 1px solid #2A5A44; border-radius: .9rem; padding: .7rem .9rem; margin-bottom: .2rem;}
-.horse-card.value {border-color: #D4AF37; box-shadow: 0 0 0 1px rgba(212,175,55,.35),
-  0 0 18px -6px rgba(212,175,55,.6);}
+.podium-row .pct {color: var(--azul); font-weight: 700; font-size: .9rem;}
+.race-card .foot {margin-top: .5rem; font-size: .8rem; color: var(--muted);}
+.horse-card {display: flex; gap: .8rem; align-items: center; background: var(--panel);
+  border: 1px solid var(--borde); border-radius: 1rem; padding: .7rem .9rem; margin-bottom: .2rem;
+  animation: entrada .35s ease both;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;}
+.horse-card:hover {transform: translateY(-1px); border-color: #2E4A75;
+  box-shadow: 0 8px 22px rgba(0,0,0,.35);}
+.horse-card.value {border-color: var(--azul); box-shadow: 0 0 0 1px rgba(59,155,255,.4),
+  0 0 20px -6px rgba(59,155,255,.65);}
 .horse-card .body {flex: 1; min-width: 0;}
 .horse-card .name {font-weight: 800; font-size: 1.05rem; letter-spacing: .01em;}
-.horse-card .meta {color: #C9C2AE; font-size: .8rem; margin: .1rem 0 .35rem;}
+.horse-card .meta {color: var(--muted); font-size: .8rem; margin: .1rem 0 .35rem;}
 .bar {background: rgba(255,255,255,.08); border-radius: 999px; height: .55rem; overflow: hidden;}
 .bar > span {display: block; height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, #3FA37C, #D4AF37);}
+  background: linear-gradient(90deg, #1668C4, #3B9DFF, #7CC4FF, #3B9DFF);
+  background-size: 220% 100%; animation: brillo 3s linear infinite;}
 .horse-card .prob {text-align: right; min-width: 4.2rem;}
-.horse-card .prob .big {font-family: Georgia, serif; font-size: 1.35rem; color: #D4AF37;
+.horse-card .prob .big {font-family: Georgia, serif; font-size: 1.35rem; color: var(--azul);
   font-weight: 700; line-height: 1;}
-.horse-card .prob .small {font-size: .72rem; color: #C9C2AE;}
-.rank {color: #8FB9A8; font-weight: 800; font-size: .8rem; width: 1.4rem; text-align: center;}
+.horse-card .prob .small {font-size: .72rem; color: var(--muted);}
+.rank {color: #7C8DB0; font-weight: 800; font-size: .8rem; width: 1.4rem; text-align: center;}
 .live-dot {display: inline-block; width: .6rem; height: .6rem; border-radius: 50%;
-  background: #E74C3C; margin-right: .4rem; animation: pulse 1.4s infinite;}
-@keyframes pulse {0% {box-shadow: 0 0 0 0 rgba(231,76,60,.7);}
-  70% {box-shadow: 0 0 0 10px rgba(231,76,60,0);} 100% {box-shadow: 0 0 0 0 rgba(231,76,60,0);}}
-div[data-testid="stMetric"] {background: #13362A; border-radius: .9rem;}
-div[data-testid="stMetricValue"] {color: #D4AF37; font-family: Georgia, serif;}
+  background: var(--rojo); margin-right: .4rem; animation: pulse 1.4s infinite;}
+@keyframes pulse {0% {box-shadow: 0 0 0 0 rgba(229,72,77,.7);}
+  70% {box-shadow: 0 0 0 10px rgba(229,72,77,0);} 100% {box-shadow: 0 0 0 0 rgba(229,72,77,0);}}
+div[data-testid="stMetric"] {background: var(--panel); border-radius: 1rem;
+  animation: entrada .3s ease both;}
+div[data-testid="stMetricValue"] {color: var(--azul); font-family: Georgia, serif;}
+div[data-testid="stChatMessage"] {animation: entrada .3s ease both;}
 /* Tarjeta de caballo + botón "Ficha" en la misma fila. Solo la fila interna
    (la que no contiene otras columnas), no la de tarjetas + gráfico. */
 div[data-testid="stHorizontalBlock"]:has(.horse-card):not(:has(div[data-testid="stHorizontalBlock"])) {
@@ -163,39 +182,50 @@ a[href*="share.streamlit.io"][data-testid] {display: none !important;}
 /* Botón ☰ fijo arriba a la izquierda: abre/cierra el menú lateral. */
 .st-key-m_hamb {position: fixed; left: .45rem; top: .45rem; z-index: 1001;}
 .st-key-m_hamb button {width: 2.9rem; height: 2.9rem; border-radius: .8rem;
-  background: #0A1A12 !important; border: 1px solid #2A5A44 !important;
-  padding: 0 !important; box-shadow: 0 4px 14px rgba(0,0,0,.45);}
+  background: rgba(11,20,36,.92) !important; border: 1px solid #1E2C47 !important;
+  padding: 0 !important; box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  backdrop-filter: blur(8px); transition: transform .1s ease, border-color .15s ease;}
+.st-key-m_hamb button:active {transform: scale(.88); border-color: #3B9DFF !important;}
 .st-key-m_hamb button p {font-size: 1.4rem !important; margin: 0 !important;
-  color: #D4AF37 !important;}
+  color: #3B9DFF !important;}
 
 /* Barra superior */
 .m-top {display: flex; align-items: center; gap: .6rem;
-  margin: .1rem 0 .5rem 3.4rem;}
+  margin: .1rem 0 .5rem 3.4rem; animation: entrada .3s ease both;}
 .m-logo {width: 2.2rem; height: 2.2rem; border-radius: .6rem; display: flex;
   align-items: center; justify-content: center; font-family: Georgia, serif; font-weight: 800;
-  background: linear-gradient(135deg, #D4AF37, #8C6D12); color: #0B1F17; flex-shrink: 0;}
+  background: linear-gradient(135deg, #3B9DFF, #1668C4); color: #04101F; flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(59,155,255,.4);}
 .m-top .t {font-weight: 800; font-size: 1.02rem; line-height: 1.1;}
-.m-top .s {color: #C9C2AE; font-size: .78rem; line-height: 1.2;}
+.m-top .s {color: #9FB0C7; font-size: .78rem; line-height: 1.2;}
 
 /* Hero compacto */
-.hero {padding: .9rem 1rem !important; margin-bottom: .7rem !important; border-radius: .9rem !important;}
+.hero {padding: .9rem 1rem !important; margin-bottom: .7rem !important; border-radius: 1rem !important;}
 .hero h1 {font-size: 1.45rem !important; margin: .1rem 0 0 !important;}
 .hero .sub {font-size: .85rem !important; margin-bottom: .45rem !important;}
 
 /* Mosaico 2x2 de indicadores */
 .tiles {display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-bottom: .8rem;}
-.tile {background: #13362A; border: 1px solid #2A5A44; border-radius: .8rem; padding: .55rem .75rem;}
-.tile .l {color: #C9C2AE; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;}
-.tile .v {font-family: Georgia, serif; color: #D4AF37; font-size: 1.45rem; font-weight: 700; line-height: 1.15;}
-.tile .x {color: #8FB9A8; font-size: .72rem;}
+.tile {background: #0E1626; border: 1px solid #1E2C47; border-radius: .9rem; padding: .55rem .75rem;
+  animation: entrada .35s ease both;}
+.tile .l {color: #9FB0C7; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;}
+.tile .v {font-family: Georgia, serif; color: #3B9DFF; font-size: 1.45rem; font-weight: 700; line-height: 1.15;}
+.tile .x {color: #7C8DB0; font-size: .72rem;}
 .m-h {font-family: Georgia, serif; font-size: 1.15rem; font-weight: 700; margin: .6rem 0 .4rem;}
 
 /* Herramientas (sección Config): popovers/inputs ya quedan en pantalla. */
 
+/* Efecto de presión tipo Android en todos los botones táctiles. */
+.st-key-m_lista button, .st-key-m_nav button, .st-key-m_pills button,
+div[class*="st-key-m_ficha_"] button {transition: transform .1s ease,
+  border-color .15s ease, box-shadow .15s ease !important;}
+
 /* Lista de carreras: cada botón es una fila-tarjeta */
 .st-key-m_lista button {width: 100%; justify-content: flex-start !important; text-align: left;
-  background: #13362A !important; border: 1px solid #2A5A44 !important; border-radius: .85rem !important;
-  padding: .7rem .85rem !important; min-height: 3.1rem;}
+  background: #0E1626 !important; border: 1px solid #1E2C47 !important; border-radius: .9rem !important;
+  padding: .7rem .85rem !important; min-height: 3.1rem; animation: entrada .3s ease both;}
+.st-key-m_lista button:active {transform: scale(.97); border-color: #3B9DFF !important;
+  box-shadow: 0 0 0 3px rgba(59,155,255,.25) !important;}
 .st-key-m_lista button p {font-size: .92rem; white-space: normal; text-align: left;}
 .st-key-m_lista [data-testid="stVerticalBlock"] {gap: .45rem !important;}
 
@@ -204,13 +234,15 @@ a[href*="share.streamlit.io"][data-testid] {display: none !important;}
   scrollbar-width: none; padding-bottom: .2rem;}
 .st-key-m_pills [data-testid="stButtonGroup"] > div::-webkit-scrollbar {display: none;}
 .st-key-m_pills button {flex-shrink: 0; min-width: 2.6rem;}
+.st-key-m_pills button:active {transform: scale(.92);}
 
 /* Tarjetas de caballo a todo el ancho + enlace "Ver ficha" pegado debajo */
 .horse-card {margin-bottom: 0 !important;}
 .horse-card .rank {display: none;}
 div[class*="st-key-m_ficha_"] {margin-top: -.55rem; display: flex; justify-content: flex-end;}
 div[class*="st-key-m_ficha_"] button {padding: 0 .4rem !important; min-height: 1.8rem !important;
-  font-size: .8rem; color: #E8C766 !important;}
+  font-size: .8rem; color: #7CC4FF !important;}
+div[class*="st-key-m_ficha_"] button:active {transform: scale(.94);}
 
 /* Indicadores de Streamlit más compactos (Laboratorio) */
 div[data-testid="stMetric"] {padding: .5rem .7rem !important;}
@@ -220,19 +252,22 @@ div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
    flota sobre el contenido como cajón — el resto del tiempo no ocupa
    espacio. Empieza debajo del botón ☰ para poder cerrarlo igual. */
 .st-key-m_nav {position: fixed; left: 0; top: 0; bottom: 0; z-index: 1000;
-  width: 4.1rem; background: #0A1A12; border-right: 1px solid #2A5A44;
-  padding: 3.6rem .35rem .5rem; box-shadow: 8px 0 24px rgba(0,0,0,.55);}
+  width: 4.1rem; background: rgba(7,13,25,.98); border-right: 1px solid #1E2C47;
+  padding: 3.6rem .35rem .5rem; box-shadow: 8px 0 24px rgba(0,0,0,.6);
+  animation: cajon .18s ease-out;}
 .st-key-m_nav > div, .st-key-m_nav [data-testid="stVerticalBlock"] {height: 100%;}
 .st-key-m_nav [data-testid="stVerticalBlock"] {justify-content: center;
   gap: .35rem !important;}
 .st-key-m_nav button {width: 100%; min-height: 2.9rem !important;
   border-radius: .7rem !important; background: transparent !important;
   border: 1px solid transparent !important; padding: .15rem 0 !important;}
+.st-key-m_nav button:active {transform: scale(.88);}
 .st-key-m_nav button p {font-size: 1.4rem !important; margin: 0 !important;
   line-height: 1.2 !important;}
 .st-key-m_nav button[kind="primary"] {
-  background: rgba(212, 175, 55, .22) !important;
-  border: 1px solid #D4AF37 !important;}
+  background: rgba(59, 155, 255, .24) !important;
+  border: 1px solid #3B9DFF !important;
+  box-shadow: 0 0 16px -4px rgba(59,155,255,.5) !important;}
 
 /* El campo del chat no queda tapado por el sello (esquina inferior der.). */
 div[data-testid="stBottomBlockContainer"] {padding-right: 4.4rem !important;
@@ -385,13 +420,13 @@ def grafico_probabilidades(filas: list[dict[str, Any]]) -> alt.Chart:
         barras = base.mark_bar(cornerRadiusEnd=4).encode(
             color=alt.Color(
                 "Fuente:N",
-                scale=alt.Scale(domain=["Modelo", "Mercado"], range=[DORADO, VERDE]),
+                scale=alt.Scale(domain=["Modelo", "Mercado"], range=[AZUL, AZUL_SUAVE]),
                 legend=alt.Legend(orient="top", title=None),
             ),
             yOffset="Fuente:N",
         )
     else:
-        barras = base.mark_bar(cornerRadiusEnd=4, color=DORADO)
+        barras = base.mark_bar(cornerRadiusEnd=4, color=AZUL)
     return barras.properties(height=max(160, 34 * len(filas)))
 
 
@@ -405,20 +440,20 @@ def grafico_calibracion(tabla: list[dict[str, Any]]) -> alt.Chart:
             alt.Tooltip("Ganó de verdad:Q", format=".1%"), "Caballos",
         ],
     )
-    barras = base.mark_bar(color=VERDE, cornerRadiusEnd=4).encode(
+    barras = base.mark_bar(color=AZUL_SUAVE, cornerRadiusEnd=4).encode(
         y=alt.Y("Ganó de verdad:Q", axis=alt.Axis(format="%"), title="Ganó de verdad"),
     )
-    linea = base.mark_line(color=DORADO, strokeWidth=3, point=True).encode(y="Prob. modelo:Q")
+    linea = base.mark_line(color=AZUL, strokeWidth=3, point=True).encode(y="Prob. modelo:Q")
     return (barras + linea).properties(height=260)
 
 
 def grafico_pesos(pesos: dict[str, float]) -> alt.Chart:
-    """Peso de cada factor en el modelo (dorado = a favor, rojo = en contra)."""
+    """Peso de cada factor en el modelo (azul = a favor, rojo = en contra)."""
     df = pd.DataFrame({"Factor": list(pesos), "Peso": list(pesos.values())})
     return alt.Chart(df).mark_bar(cornerRadiusEnd=4).encode(
         y=alt.Y("Factor:N", sort="-x", title=None),
         x=alt.X("Peso:Q", title="Peso (más largo = más importante)"),
-        color=alt.condition(alt.datum.Peso >= 0, alt.value(DORADO), alt.value("#C0392B")),
+        color=alt.condition(alt.datum.Peso >= 0, alt.value(AZUL), alt.value("#C0392B")),
         tooltip=["Factor", alt.Tooltip("Peso:Q", format=".2f")],
     ).properties(height=260)
 
@@ -445,6 +480,6 @@ def grafico_forma(historial: list[dict[str, Any]]) -> alt.Chart | None:
         ),
         tooltip=[alt.Tooltip("Fecha:T", format="%d/%m/%Y"), "Llegada", "Ganador"],
     )
-    linea = base.mark_line(color=VERDE, strokeWidth=3)
-    puntos_chart = base.mark_circle(size=120, color=DORADO)
+    linea = base.mark_line(color=AZUL_SUAVE, strokeWidth=3)
+    puntos_chart = base.mark_circle(size=120, color=AZUL)
     return (linea + puntos_chart).properties(height=220)
