@@ -1,0 +1,27 @@
+# Dependencias del Sistema de Análisis Estadístico de Caballos
+# Presupuesto CERO: solo librerías open-source.
+
+# Extracción de PDF
+pdfplumber>=0.11.0
+
+# Generación de PDFs sintéticos para pruebas
+reportlab>=4.0.0
+
+# Enriquecimiento web (scraping respetuoso)
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# Dashboard (probado con streamlit 1.67: pills, dialog, metric con borde)
+streamlit>=1.67.0,<2
+pandas>=2.0.0
+altair>=5.0.0
+
+# Modelo entrenado (logit condicional)
+numpy>=1.26.0
+
+# OCR de gacetas escaneadas (cuotas ML). Open source, sin Tesseract.
+rapidocr_onnxruntime==1.4.4
+
+# Tests
+pytest>=8.0.0
+responses>=0.24.0

@@ -1,0 +1,28 @@
+# Ejecuta la suite en cada Pull Request y en cada push a main.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Compilar
+        run: python -m compileall -q src/
+
+      - name: Tests
+        run: python -m pytest -q

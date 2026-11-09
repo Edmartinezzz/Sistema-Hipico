@@ -1,0 +1,22 @@
+# Tema visual del Sistema Hípico: verde pista + dorado sobre fondo oscuro.
+# Para un tema claro cambia base = "light" y ajusta los colores.
+
+[theme]
+base = "dark"
+primaryColor = "#D4AF37"
+backgroundColor = "#0B1F17"
+secondaryBackgroundColor = "#13362A"
+textColor = "#F2EBD9"
+linkColor = "#E8C766"
+borderColor = "#2A5A44"
+showWidgetBorder = true
+baseRadius = "0.75rem"
+headingFont = "serif"
+chartCategoricalColors = ["#D4AF37", "#3FA37C", "#E8E1CF", "#8FB9A8", "#C0392B"]
+
+[browser]
+gatherUsageStats = false
+
+[server]
+maxUploadSize = 500
+enableStaticServing = true

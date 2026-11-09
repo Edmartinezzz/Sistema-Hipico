@@ -1,0 +1,49 @@
+# Archiva las reuniones de la semana, reentrena el modelo y actualiza el
+# laboratorio. Los cambios (data/archivo, data/modelo.json,
+# data/laboratorio.json) se suben al repositorio y la app en Streamlit
+# Community Cloud los usa en su siguiente arranque.
+name: Archivar reuniones y reentrenar
+
+on:
+  schedule:
+    # Horas en UTC (Venezuela = UTC-4).
+    - cron: "30 3 * * 0"   # sábado 23:30 hora Venezuela -> Valencia
+    - cron: "30 3 * * 1"   # domingo 23:30 hora Venezuela -> La Rinconada
+    - cron: "0 15 * * 1"   # lunes 11:00 hora Venezuela, por si la web tardó
+  workflow_dispatch: {}    # botón "Run workflow" para ejecutarlo a mano
+
+permissions:
+  contents: write
+
+concurrency:
+  group: archivar
+  cancel-in-progress: false
+
+jobs:
+  archivar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias mínimas
+        run: pip install "requests>=2.31.0" "numpy>=1.26.0"
+
+      - name: Archivar y reentrenar
+        run: python scripts/archivar.py --entrenar
+
+      - name: Subir cambios
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/archivo data/modelo.json data/laboratorio.json
+          if git diff --cached --quiet; then
+            echo "Sin reuniones nuevas."
+          else
+            git commit -m "datos: archivo semanal y modelo reentrenado"
+            git push
+          fi

@@ -1,0 +1,20 @@
+# AGENTS.md
+
+- Python: usar `py -3.12` (3.15 también instalado; 3.12 por compatibilidad).
+- Entorno: `.venv/Scripts/python.exe` (crear con `py -3.12 -m venv .venv`).
+- Tests: `.venv/Scripts/python.exe -m pytest -q`
+- Compilación: `.venv/Scripts/python.exe -m compileall -q src/`
+- App: `.venv/Scripts/python.exe -m streamlit run src/app.py`
+- Muestras sintéticas: `.venv/Scripts/python.exe scripts/generar_muestras.py`
+- Ver `PROJECT_SPEC.md` para reglas (español, sin APIs de pago, logging en vez de print, ramas `feature/*`).
+- Gaceta web: `src/gaceta_web.py` lee `desafiohipico.com/retrospectos` (JSON-LD) y `/revista/<id>` (JSON `initialData` de Next.js). Caché en `data/cache/`. La web no publica cuotas.
+- En Windows, imprimir texto con acentos requiere `PYTHONIOENCODING=utf-8`.
+- UI: tema en `.streamlit/config.toml`; HTML/CSS y gráficos Altair en `src/ui.py` (funciones puras, escapar texto con `html.escape`). Pestañas: Domingo / Reunión / Carrera / En vivo / Laboratorio / Chat IA. Vista móvil automática por User-Agent (`ui.es_movil`), forzable con `?vista=movil|pc` o `session_state["_vista_forzada"]`; layout en `_vista_movil` de `app.py`.
+- Modo Domingo (`_tab_domingo` en `app.py`): pronóstico por carrera con `analisis.pronostico_carrera` (top-3, confianza, combo 5y6 vía Harville, exacta top). Texto compartible `_texto_pronostico` → WhatsApp (`wa.me`) y Telegram (`src/telegram.py`, keys `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`). "Actualizar retirados" → `_recargar_reunion` (necesita `meta["reunion_id"]`).
+- Chat IA: `src/chat_ia.py` encadena proveedores gratuitos OpenAI-compatible (Gemini `GEMINI_API_KEY`, GitHub Models `GITHUB_TOKEN`, NVIDIA `NVIDIA_API_KEY`, OpenRouter `OPENROUTER_API_KEY`, Groq `GROQ_API_KEY`, Pollinations sin key) y salta al siguiente si uno falla/llega al límite. Keys en secrets/env, nunca en código. Modelos con respaldo automático; `*_MODEL` por proveedor para forzar. Contexto: `_contexto_chat` en `app.py`.
+- Tests de la app (`tests/test_app.py`) inyectan `session_state["reuniones"]` y una semana sin reuniones para no usar la red.
+- Videos: `src/videos.py` + tablas `race_videos`/`settings` en SQLite; archivos subidos en `data/videos/`.
+- Archivo histórico: `data/archivo/*.json.gz` (versionado en git). Actualizar + reentrenar + evaluar: `.venv/Scripts/python.exe scripts/archivar.py --entrenar` (genera `data/modelo.json` y `data/laboratorio.json`).
+- Modelo: `src/modelo.py` (logit condicional, prior `PESOS_PREVIOS`, `L2_DEFECTO`). Validar cualquier cambio con `src/laboratorio.py` (walk-forward); nunca medir aciertos con reuniones usadas en el entrenamiento.
+- Gacetas escaneadas: `src/ocr_gaceta.py` (rapidocr_onnxruntime 1.4.4) solo lee carrera/fecha (cabecera) y nombres + cuotas ML (franja izquierda 30%), y las cruza con la reunión web/archivo de esa fecha. ~20 s por página. Resultados en caché por sha256 en `data/ocr_cache/` (gitignored). PDF real de prueba: `C:\Users\Luis\Downloads\LA RINCONADA 8-11-24  SOLO GACETAS +58 414-9129220.pdf` (sin la 7ª carrera).
+- Despliegue: Streamlit Community Cloud (`src/app.py`, Python 3.12). `.github/workflows/archivar.yml` actualiza los datos cada semana; `tests.yml` corre pytest en cada PR.

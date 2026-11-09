@@ -1,0 +1,31 @@
+# Entorno virtual
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# Datos generados en tiempo de ejecución (no commitear binarios pesados)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/samples/*.pdf
+data/samples/*.csv
+data/enrichment/*.csv
+data/cache/
+data/videos/
+data/ocr_cache/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# IDE / SO
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
