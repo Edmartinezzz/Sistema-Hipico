@@ -191,3 +191,10 @@ def test_fecha_e_hipodromo_en_paginas_distintas(tmp_path):
 def test_tabla_sin_encabezados_bajo_otra_carrera_se_omite(tmp_path):
     caballos = pdf_extractor.extract_races(_pdf_continuacion(tmp_path / "otra.pdf", "Carrera 2"))
     assert [c["horse_name"] for c in caballos] == ["Alfa", "Beta"]
+
+
+def test_titulo_repetido_completa_datos_de_la_carrera(tmp_path):
+    pdf = _pdf_continuacion(tmp_path / "det.pdf", "Carrera 1 — 1200 m — Arena")
+    caballos = pdf_extractor.extract_races(pdf)
+    assert [c["surface"] for c in caballos][-1] is not None
+    assert caballos[-1]["distance"] == "1200 m"
