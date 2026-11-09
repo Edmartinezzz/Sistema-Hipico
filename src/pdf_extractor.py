@@ -257,8 +257,9 @@ def extract_races(pdf_path: str) -> list[dict]:
         for page_number, page in enumerate(pdf.pages, start=1):
             page_text = page.extract_text() or ""
             any_text = any_text or bool(page_text.strip())
-            if meta["track"] is None and meta["date"] is None:
-                meta = _document_meta(page_text)
+            if meta["track"] is None or meta["date"] is None:
+                page_meta = _document_meta(page_text)
+                meta = {k: meta[k] or page_meta.get(k) for k in meta}
 
             top = 0.0
             for table in page.find_tables():
@@ -272,13 +273,16 @@ def extract_races(pdf_path: str) -> list[dict]:
                     continue
 
                 header = _race_header(above)
-                if header:
+                same_race = header is None or (
+                    race is not None and header["race_number"] == race["race_number"]
+                )
+                if header and not (same_race and race is not None):
                     race = header
 
                 detected = detect_columns(rows)
                 if detected:
                     mapping, columns, data_rows = detected, len(rows[0]), rows[1:]
-                elif mapping is not None and len(rows[0]) == columns and not header:
+                elif mapping is not None and len(rows[0]) == columns and same_race:
                     data_rows = rows
                     logger.debug("Tabla de la página %s tratada como continuación", page_number)
                 else:
@@ -312,5 +316,8 @@ def extract_races(pdf_path: str) -> list[dict]:
         logger.warning("No se encontraron tablas de caballos en %s", pdf_path)
         return []
 
+    for horse in horses:
+        horse["track"] = horse["track"] or meta["track"]
+        horse["date"] = horse["date"] or meta["date"]
     _mark_favorites(horses)
     return horses

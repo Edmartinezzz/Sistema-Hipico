@@ -149,3 +149,45 @@ def test_detect_columns_variantes():
 def test_detect_columns_sin_columna_de_caballo():
     assert pdf_extractor.detect_columns([["1", "Relámpago", "J. Pérez"]]) == {}
     assert pdf_extractor.detect_columns([]) == {}
+
+
+def _pdf_continuacion(path, titulo_pagina_2):
+    """Página 1: fecha + Carrera 1 con encabezados. Página 2: hipódromo + tabla sin encabezados."""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Table, TableStyle
+
+    estilos = getSampleStyleSheet()
+    bordes = TableStyle([("GRID", (0, 0), (-1, -1), 0.5, (0, 0, 0))])
+    tabla1 = Table([["#", "Caballo", "Jinete", "Cuota"], ["1", "Alfa", "J. Uno", "2-1"],
+                    ["2", "Beta", "J. Dos", "3-1"]])
+    tabla2 = Table([["3", "Gamma", "J. Tres", "5-1"], ["4", "Delta", "J. Cuatro", "8-1"]])
+    tabla1.setStyle(bordes)
+    tabla2.setStyle(bordes)
+    historia = [Paragraph("Fecha: 15/01/2026", estilos["Normal"]),
+                Paragraph("Carrera 1 — 1200 m", estilos["Heading2"]), tabla1, PageBreak(),
+                Paragraph("Hipódromo: Pista de Prueba", estilos["Normal"])]
+    if titulo_pagina_2:
+        historia.append(Paragraph(titulo_pagina_2, estilos["Heading2"]))
+    historia.append(tabla2)
+    SimpleDocTemplate(str(path), pagesize=letter).build(historia)
+    return str(path)
+
+
+@pytest.mark.parametrize("titulo", [None, "Carrera 1 (continuación)"])
+def test_continuacion_sin_encabezados_con_o_sin_titulo_repetido(tmp_path, titulo):
+    caballos = pdf_extractor.extract_races(_pdf_continuacion(tmp_path / "cont.pdf", titulo))
+    assert [c["horse_name"] for c in caballos] == ["Alfa", "Beta", "Gamma", "Delta"]
+    assert {c["race_number"] for c in caballos} == {1}
+    assert {c["page"] for c in caballos} == {1, 2}
+    assert caballos[-1]["distance"] == "1200 m"
+
+
+def test_fecha_e_hipodromo_en_paginas_distintas(tmp_path):
+    caballos = pdf_extractor.extract_races(_pdf_continuacion(tmp_path / "meta.pdf", None))
+    assert {(c["date"], c["track"]) for c in caballos} == {("2026-01-15", "Pista de Prueba")}
+
+
+def test_tabla_sin_encabezados_bajo_otra_carrera_se_omite(tmp_path):
+    caballos = pdf_extractor.extract_races(_pdf_continuacion(tmp_path / "otra.pdf", "Carrera 2"))
+    assert [c["horse_name"] for c in caballos] == ["Alfa", "Beta"]

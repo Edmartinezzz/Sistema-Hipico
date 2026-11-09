@@ -218,3 +218,47 @@ def test_enrich_horse_db_inaccesible_no_rompe(tmp_path):
     carpeta = tmp_path / "es_un_directorio"
     carpeta.mkdir()
     assert scraper.enrich_horse("X", str(carpeta), offline=True)["found"] is False
+
+
+@responses.activate
+def test_rate_limited_get_redireccion_respeta_el_limite(sin_esperas):
+    responses.get(URL, status=302, headers={"Location": "/otra"})
+    responses.get("https://datos.ejemplo.test/otra", json={"ok": True})
+    respuesta = scraper.rate_limited_get(URL, min_interval=1.0)
+    assert respuesta.json() == {"ok": True}
+    assert len(responses.calls) == 2
+    assert sin_esperas and sin_esperas[-1] > 0
+
+
+@responses.activate
+def test_rate_limited_get_demasiadas_redirecciones():
+    responses.get(URL, status=302, headers={"Location": URL})
+    with pytest.raises(requests.TooManyRedirects):
+        scraper.rate_limited_get(URL, min_interval=0)
+
+
+@responses.activate
+def test_enrich_horse_http_conserva_el_nombre_consultado(db):
+    responses.get(URL, json={"name": "Otro Caballo", "wins": 3})
+    fuente = scraper.http_json_fetcher(URL + "?n={name}")
+    resultado = scraper.enrich_horse("Caribeño", db, fetchers=[fuente])
+    assert resultado["horse"]["name"] == "Caribeño"
+    assert database.get_horse("Otro Caballo", db) is None
+
+
+def test_cache_to_db_acepta_anio_con_decimal_cero(db):
+    scraper.cache_to_db([{"name": "Alfa", "birth_year": 2020.0}, {"name": "Beta",
+                         "birth_year": 2020.5}], db)
+    assert database.get_horse("Alfa", db)["birth_year"] == 2020
+    assert database.get_horse("Beta", db)["birth_year"] is None
+
+
+def test_enrich_horse_csv_nuevo_reemplaza_la_cache(db, tmp_path):
+    viejo, nuevo = tmp_path / "viejo.csv", tmp_path / "nuevo.csv"
+    viejo.write_text("name,starts,wins\nAlfa,10,1\n", encoding="utf-8")
+    nuevo.write_text("name,starts,wins\nAlfa,10,6\n", encoding="utf-8")
+    assert scraper.enrich_horse("Alfa", db, offline=True, csv_path=viejo)["data"]["wins"] == 1
+    repetido = scraper.enrich_horse("Alfa", db, offline=True, csv_path=viejo)
+    assert repetido["cached"] is True
+    assert scraper.enrich_horse("Alfa", db, offline=True, csv_path=nuevo)["data"]["wins"] == 6
+    assert len(database.get_horse_history("Alfa", db)["enrichment"]) == 2
