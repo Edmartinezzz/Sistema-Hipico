@@ -37,6 +37,7 @@ USER_AGENT = (
 )
 MIN_INTERVAL_SECONDS = 1.0
 MAX_RETRIES = 3
+MAX_REDIRECTS = 5
 DEFAULT_TIMEOUT = 10.0
 RETRY_STATUS = {429, 500, 502, 503, 504}
 
@@ -100,17 +101,20 @@ def rate_limited_get(url: str, **kwargs: Any) -> requests.Response:
             target = urljoin(response.url, response.headers["Location"])
             _wait_for_slot(_domain(target), min_interval)
 
-    hooks = kwargs.pop("hooks", None) or {}
-    response_hooks = hooks.get("response", [])
-    if callable(response_hooks):
-        response_hooks = [response_hooks]
-    hooks = {**hooks, "response": [*response_hooks, throttle_redirect]}
+    hooks = dict(kwargs.pop("hooks", None) or {})
+    if kwargs.get("allow_redirects", True):
+        response_hooks = hooks.get("response") or []
+        if callable(response_hooks):
+            response_hooks = [response_hooks]
+        hooks["response"] = [*response_hooks, throttle_redirect]
 
     attempt = 0
     while True:
         _wait_for_slot(_domain(url), min_interval)
         try:
-            response = requests.get(url, headers=headers, hooks=hooks, **kwargs)
+            with requests.Session() as session:
+                session.max_redirects = MAX_REDIRECTS
+                response = session.get(url, headers=headers, hooks=hooks, **kwargs)
             if response.status_code not in RETRY_STATUS:
                 response.raise_for_status()
                 return response
