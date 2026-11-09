@@ -94,6 +94,14 @@ def test_harville_place_probabilities():
 def test_harville_place_con_caballo_sin_opciones():
     probs = harville_place_probabilities([1, 1, 0], places=2)
     assert probs == pytest.approx([1.0, 1.0, 0.0])
+    assert harville_place_probabilities([1, 1, 0], places=3) == pytest.approx([1.0, 1.0, 1.0])
+    assert harville_place_probabilities([2, 0, 0], places=2) == pytest.approx([1.0, 0.5, 0.5])
+
+
+def test_exacta_con_fuerza_cero_en_segundo_lugar():
+    assert harville_exacta_probability([1, 0], 0, 1) == pytest.approx(1.0)
+    assert harville_exacta_probability([1, 0], 1, 0) == 0.0
+    assert harville_exacta_probability([1, 0, 0], 0, 2) == pytest.approx(0.5)
 
 
 def test_detect_value_bets():
