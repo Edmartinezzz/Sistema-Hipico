@@ -24,7 +24,7 @@ import time
 import unicodedata
 from pathlib import Path
 from typing import Any, Callable, Iterable
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, urljoin, urlsplit
 
 import requests
 
@@ -37,6 +37,7 @@ USER_AGENT = (
 )
 MIN_INTERVAL_SECONDS = 1.0
 MAX_RETRIES = 3
+MAX_REDIRECTS = 5
 DEFAULT_TIMEOUT = 10.0
 RETRY_STATUS = {429, 500, 502, 503, 504}
 
@@ -93,13 +94,20 @@ def rate_limited_get(url: str, **kwargs: Any) -> requests.Response:
     max_retries = int(kwargs.pop("max_retries", MAX_RETRIES))
     headers = {"User-Agent": USER_AGENT, **(kwargs.pop("headers", None) or {})}
     kwargs.setdefault("timeout", DEFAULT_TIMEOUT)
-    domain = _domain(url)
+    follow_redirects = kwargs.pop("allow_redirects", True)
 
     attempt = 0
+    redirects = 0
     while True:
-        _wait_for_slot(domain, min_interval)
+        _wait_for_slot(_domain(url), min_interval)
         try:
-            response = requests.get(url, headers=headers, **kwargs)
+            response = requests.get(url, headers=headers, allow_redirects=False, **kwargs)
+            if follow_redirects and response.is_redirect:
+                redirects += 1
+                if redirects > MAX_REDIRECTS:
+                    raise requests.TooManyRedirects(f"Demasiadas redirecciones desde {url}")
+                url = urljoin(url, response.headers["Location"])
+                continue
             if response.status_code not in RETRY_STATUS:
                 response.raise_for_status()
                 return response
@@ -221,6 +229,14 @@ def _find_in_csv(horse_name: str, csv_path: str | Path) -> dict[str, Any] | None
 _HORSE_FIELDS = ("birth_year", "sex", "sire", "dam")
 
 
+def _as_year(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not value.is_integer():
+        return None
+    return int(value)
+
+
 def cache_to_db(records: Iterable[dict[str, Any]], db_path: str | None = None) -> int:
     """Guarda registros de enriquecimiento en SQLite (upsert del caballo).
 
@@ -239,8 +255,7 @@ def cache_to_db(records: Iterable[dict[str, Any]], db_path: str | None = None) -
             logger.warning("Registro sin nombre de caballo; se omite: %r", record)
             continue
         fields = {f: record.get(f) for f in _HORSE_FIELDS}
-        if not isinstance(fields["birth_year"], int) or isinstance(fields["birth_year"], bool):
-            fields["birth_year"] = None
+        fields["birth_year"] = _as_year(fields["birth_year"])
         for text_field in ("sex", "sire", "dam"):
             if fields[text_field] is not None:
                 fields[text_field] = str(fields[text_field])
@@ -276,7 +291,7 @@ def enrich_horse(
     csv_path: str | Path | None = None,
     fetchers: list[Fetcher] | None = None,
 ) -> dict[str, Any]:
-    """Busca datos históricos de un caballo: SQLite → CSV local → fuentes HTTP.
+    """Busca datos históricos de un caballo: CSV local → SQLite → fuentes HTTP.
 
     Lo que se encuentre en el CSV o en internet se guarda en SQLite para no
     volver a pedirlo.
@@ -295,11 +310,10 @@ def enrich_horse(
     not_found: dict[str, Any] = {"found": False, "source": None}
     if not horse_name or not str(horse_name).strip():
         return not_found
+    cached = None
     try:
         database.init_db(db_path)
         cached = _from_db(horse_name, db_path)
-        if cached:
-            return cached
     except Exception:  # noqa: BLE001 - degradar sin romper el pipeline
         logger.exception("No se pudo consultar SQLite para %r", horse_name)
 
@@ -311,7 +325,11 @@ def enrich_horse(
             logger.warning("No se pudo leer el CSV %s: %s", csv_path, exc)
             record = None
         if record:
+            if cached and cached["source"] == "csv" and cached["data"] == record:
+                return cached
             return _store_and_return(record, "csv", db_path)
+    if cached:
+        return cached
 
     if offline:
         return not_found
@@ -324,7 +342,7 @@ def enrich_horse(
             logger.warning("La fuente %s falló para %r: %s", source, horse_name, exc)
             continue
         if record:
-            return _store_and_return({"name": horse_name, **record}, source, db_path)
+            return _store_and_return({**record, "name": horse_name}, source, db_path)
     return not_found
 
 
