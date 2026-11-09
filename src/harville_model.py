@@ -116,9 +116,20 @@ def harville_exacta_probability(strengths: Sequence[float], first: int, second: 
     if first == second:
         return 0.0
     p = harville_win_probabilities(strengths)
-    if p[first] >= 1.0:
-        return 0.0
-    return p[first] * p[second] / (1.0 - p[first])
+    return p[first] * _next_place(p, (first,))[second]
+
+
+def _next_place(p: Sequence[float], placed: tuple[int, ...]) -> list[float]:
+    """Probabilidad de que cada caballo no colocado ocupe el siguiente puesto.
+
+    Si los no colocados solo tienen fuerza 0, el puesto se reparte por igual
+    entre ellos: alguno tiene que ocuparlo.
+    """
+    free = [k for k in range(len(p)) if k not in placed]
+    remaining = sum(p[k] for k in free)
+    if remaining <= 1e-15:
+        return [1.0 / len(free) if k in free else 0.0 for k in range(len(p))]
+    return [p[k] / remaining if k in free else 0.0 for k in range(len(p))]
 
 
 def harville_place_probabilities(strengths: Sequence[float], places: int = 3) -> list[float]:
@@ -136,20 +147,17 @@ def harville_place_probabilities(strengths: Sequence[float], places: int = 3) ->
     places = max(0, min(places, n))
     result = [0.0] * n
 
-    def recurse(placed: tuple[int, ...], prob: float, used: float) -> None:
-        remaining = 1.0 - used
-        if remaining <= 1e-15:
-            return
-        for k in range(n):
-            if k in placed or p[k] == 0:
+    def recurse(placed: tuple[int, ...], prob: float) -> None:
+        for k, q in enumerate(_next_place(p, placed)):
+            if q == 0:
                 continue
-            prob_k = prob * p[k] / remaining
+            prob_k = prob * q
             result[k] += prob_k
             if len(placed) + 1 < places:
-                recurse(placed + (k,), prob_k, used + p[k])
+                recurse(placed + (k,), prob_k)
 
     if places:
-        recurse((), 1.0, 0.0)
+        recurse((), 1.0)
     return result
 
 

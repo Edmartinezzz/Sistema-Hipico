@@ -145,3 +145,12 @@ def test_datos_de_ejemplo_incluidos_en_el_repo(db):
     )
     value_bets = [f["horse_name"] for r in resultado["races"] for f in r["rows"] if f["value_bet"]]
     assert value_bets == ["Lucero Real", "Ñandú Veloz", "Orquídea"]
+
+
+def test_analyze_race_sin_victorias_y_peso_cero_usa_el_mercado():
+    filas = pipeline.analyze_race(
+        [_caballo("A", 2.0, "5-0-1-1"), _caballo("B", 3.0, "8-0-2-2")], prior_weight=0.0
+    )
+    assert sum(f["model_prob"] for f in filas) == pytest.approx(1.0)
+    for fila in filas:
+        assert fila["model_prob"] == pytest.approx(fila["market_prob"])

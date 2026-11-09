@@ -137,6 +137,8 @@ def analyze_race(
         else:
             strengths.append(m)
 
+    if priced and sum(strengths) <= 0:
+        strengths = list(market)
     if priced:
         model = harville_model.harville_win_probabilities(strengths)
         top3 = harville_model.harville_place_probabilities(strengths, places=3)
