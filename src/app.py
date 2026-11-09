@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:  # `streamlit run src/app.py` solo agrega src/ al 
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from src import database, pipeline, sample_data  # noqa: E402
+from src import database, gaceta_online, pipeline, sample_data  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +163,11 @@ def _show_results(result: dict) -> None:
             "Value bets: "
             + "; ".join(f"C{n} {row['horse_name']} (edge {row['edge']:+.1%})" for n, row in bets)
         )
+    elif not any(row["market_prob"] for race in result["races"] for row in race["rows"]):
+        st.info(
+            "Esta gaceta no trae cuotas: la «Prob. modelo» sale del historial con un mercado "
+            "uniforme. Para ver value bets hacen falta cuotas."
+        )
     else:
         st.info("Ningún caballo supera el edge mínimo. Prueba bajar el umbral en la barra lateral.")
 
@@ -221,13 +226,33 @@ def main() -> None:
     )
     options = _sidebar()
 
+    st.subheader("Buscar la gaceta en internet")
+    col_track, col_search = st.columns([2, 1])
+    track = col_track.selectbox(
+        "Hipódromo",
+        list(gaceta_online.TRACKS),
+        format_func=gaceta_online.TRACKS.get,
+        key="hipodromo",
+    )
+    search = col_search.button("Buscar gaceta de hoy", type="primary", key="buscar")
+    st.caption(
+        "Fuente: Desafío Hípico; si falla, la revista PDF de pollamacaco.com. "
+        "Estas fuentes no publican cuotas: verás la prob. del modelo, pero no value bets."
+    )
+
+    st.subheader("O sube una gaveta en PDF")
     uploaded = st.file_uploader("Gaveta en PDF", type=["pdf"])
     col1, col2 = st.columns(2)
-    analyze = col1.button("Analizar", type="primary", disabled=uploaded is None, key="analizar")
+    analyze = col1.button("Analizar", disabled=uploaded is None, key="analizar")
     sample = col2.button("Usar gaveta de ejemplo", key="ejemplo")
 
     try:
-        if analyze and uploaded is not None:
+        if search:
+            with st.spinner(f"Buscando la gaceta de {gaceta_online.TRACKS[track]}…"):
+                result = pipeline.analyze_online(track, db_path=_db_path(), **options)
+            st.session_state["result"] = result
+            st.session_state["label"] = result["source"]
+        elif analyze and uploaded is not None:
             pdf_path = _save_upload(uploaded)
             try:
                 _run_analysis(pdf_path, uploaded.name, options)
@@ -239,6 +264,9 @@ def main() -> None:
             if not options["csv_path"] and pipeline.SAMPLE_CSV.exists():
                 options = {**options, "csv_path": pipeline.SAMPLE_CSV}
             _run_analysis(path, "gaveta de ejemplo", options)
+    except gaceta_online.GacetaNoEncontrada as exc:
+        st.error(f"{exc}. Puedes subir el PDF a mano.")
+        st.session_state.pop("result", None)
     except Exception as exc:  # noqa: BLE001 - nunca dejar la app en blanco
         logger.exception("Error al analizar")
         st.error(f"No se pudo analizar el PDF: {exc}")
@@ -246,7 +274,9 @@ def main() -> None:
 
     result = st.session_state.get("result")
     if result is None:
-        st.info("Sube una gaveta en PDF y pulsa **Analizar**, o prueba con la gaveta de ejemplo.")
+        st.info(
+            "Pulsa **Buscar gaceta de hoy**, sube una gaveta en PDF o prueba con la de ejemplo."
+        )
         return
     st.caption(f"Resultados de: {st.session_state.get('label')}")
     try:

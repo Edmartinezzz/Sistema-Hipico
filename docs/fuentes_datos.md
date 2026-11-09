@@ -13,6 +13,22 @@ texto (no escaneadas) y reconoce columnas como «Caballo», «Jinete/Jockey», �
   **sintético**: lo genera `python -m src.sample_data` con caballos inventados.
 - El récord se interpreta como `carreras-1.º-2.º-3.º` (por ejemplo `12-4-3-2`).
 
+## 1b. Gaceta en internet (botón «Buscar gaceta de hoy»)
+
+`src/gaceta_online.py` busca la reunión sin que subas nada:
+
+1. **Desafío Hípico** (<https://www.desafiohipico.com/retrospectos>): lista de reuniones
+   de La Rinconada y Valencia; se elige la de hoy o la próxima (o la más reciente si no
+   hay ninguna futura). De `/revista/<id>` se leen inscritos, jinete, entrenador, peso,
+   retirados y carreras/victorias del año. Su `robots.txt` permite `/retrospectos` y
+   `/revista/`; no se usa `/api/`.
+2. **Respaldo: pollamacaco.com** (`/Revistas/LaRinconada.pdf`): revista en PDF de Movil
+   Hipismo, leída por `pdf_extractor` (récord `Act: (carreras-1.º-2.º-3.º)`). Solo La
+   Rinconada; la app avisa si el PDF no es del día.
+
+Ninguna de las dos publica cuotas. Las peticiones usan `rate_limited_get` (User-Agent
+propio, 1 petición/s por dominio, reintentos). Los tests usan HTML y PDF sintéticos.
+
 ## 2. Caché SQLite (automática)
 
 `data/horse_analytics.db` (cambiable con `HORSE_DB_PATH`). Guarda cada carrera analizada y

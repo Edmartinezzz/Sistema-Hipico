@@ -17,6 +17,10 @@ donde :math:`k` (``prior_weight``) indica cuántas carreras "vale" la opinión
 del mercado. Las fuerzas :math:`s_i` se convierten en probabilidades de
 victoria con Harville (:math:`s_i / \\sum s_j`). Sin historial, :math:`s_i = m_i`.
 
+Si la gaceta no publica cuotas (``odds_published=False``, como las fuentes en
+línea), :math:`m_i` es uniforme (:math:`1/n`): hay "Prob. modelo" pero no
+"Prob. mercado", edge, value bets ni Kelly.
+
 Es una heurística transparente y sencilla, no una predicción garantizada.
 """
 
@@ -28,7 +32,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-from src import database, harville_model, pdf_extractor, scraper
+from src import database, gaceta_online, harville_model, pdf_extractor, scraper
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +103,18 @@ def analyze_race(
     """
     enrichments = enrichments or {}
     priced = [i for i, h in enumerate(horses) if h.get("odds") and h["odds"] > 1]
-    market = harville_model.normalize_probabilities(
-        [harville_model.implied_probability(horses[i]["odds"]) for i in priced]
-    )
+    has_market = bool(priced)
+    if has_market:
+        market = harville_model.normalize_probabilities(
+            [harville_model.implied_probability(horses[i]["odds"]) for i in priced]
+        )
+    else:
+        priced = [
+            i
+            for i, h in enumerate(horses)
+            if h.get("odds_published") is False and not h.get("scratched")
+        ]
+        market = [1 / len(priced)] * len(priced) if priced else []
 
     rows: list[dict[str, Any]] = []
     strengths: list[float] = []
@@ -110,7 +123,7 @@ def analyze_race(
         form = form_from_enrichment(enrichment.get("data"))
         form_source = "historial" if form else None
         if form is None:
-            form = parse_record(horse.get("record"))
+            form = parse_record(horse.get("record")) or form_from_enrichment(horse)
             form_source = "gaveta" if form else None
         rows.append(
             {
@@ -131,7 +144,7 @@ def analyze_race(
 
     for position, index in enumerate(priced):
         row, m = rows[index], market[position]
-        row["market_prob"] = m
+        row["market_prob"] = m if has_market else None
         if row["starts"]:
             strengths.append((row["wins"] + prior_weight * m) / (row["starts"] + prior_weight))
         else:
@@ -142,17 +155,19 @@ def analyze_race(
     if priced:
         model = harville_model.harville_win_probabilities(strengths)
         top3 = harville_model.harville_place_probabilities(strengths, places=3)
-        bets = {
-            bet["index"]
-            for bet in harville_model.detect_value_bets(model, market, threshold)
-        }
+        bets = (
+            {b["index"] for b in harville_model.detect_value_bets(model, market, threshold)}
+            if has_market
+            else set()
+        )
         for position, index in enumerate(priced):
             row = rows[index]
             row["model_prob"] = model[position]
-            row["edge"] = model[position] - market[position]
-            row["value_bet"] = position in bets
-            row["kelly"] = harville_model.kelly_fraction(model[position], row["odds"])
             row["top3_prob"] = top3[position]
+            if has_market:
+                row["edge"] = model[position] - market[position]
+                row["value_bet"] = position in bets
+                row["kelly"] = harville_model.kelly_fraction(model[position], row["odds"])
     return rows
 
 
@@ -220,19 +235,62 @@ def analyze_pdf(
         if not horses:
             warnings.append("No se encontraron tablas de caballos en el PDF.")
             return {"races": [], "enrichment": {}, "warnings": warnings}
+        return _analyze_horses(
+            horses, warnings, db_path, offline, csv_path, threshold, prior_weight, save
+        )
 
-        database.init_db(db_path)
-        enrichment: dict[str, dict[str, Any]] = {}
-        for name in dict.fromkeys(h["horse_name"] for h in horses if h.get("horse_name")):
-            enrichment[name] = scraper.enrich_horse(
-                name, db_path, offline=offline, csv_path=csv_path
-            )
 
-        races = _group_by_race(horses)
-        for race in races:
-            if save:
-                _save_race(race, db_path, warnings)
-            race["rows"] = analyze_race(race.pop("horses"), enrichment, threshold, prior_weight)
+def analyze_online(
+    track: str = "LA RINCONADA",
+    db_path: str | None = None,
+    offline: bool = True,
+    csv_path: str | Path | None = None,
+    threshold: float = DEFAULT_THRESHOLD,
+    prior_weight: float = DEFAULT_PRIOR_WEIGHT,
+    save: bool = True,
+    today: Any = None,
+) -> dict[str, Any]:
+    """Busca la gaceta del día en internet (:func:`gaceta_online.fetch_gaceta`) y la analiza.
+
+    ``offline`` solo afecta al enriquecimiento; la búsqueda de la gaceta
+    siempre usa la red.
+
+    Returns:
+        Igual que :func:`analyze_pdf`, más ``"source"`` con la fuente usada.
+
+    Raises:
+        gaceta_online.GacetaNoEncontrada: si ninguna fuente respondió.
+    """
+    with _collect_warnings() as warnings:
+        horses, source = gaceta_online.fetch_gaceta(track, today)
+        result = _analyze_horses(
+            horses, warnings, db_path, offline, csv_path, threshold, prior_weight, save
+        )
+    return {**result, "source": source}
+
+
+def _analyze_horses(
+    horses: list[dict[str, Any]],
+    warnings: list[str],
+    db_path: str | None,
+    offline: bool,
+    csv_path: str | Path | None,
+    threshold: float,
+    prior_weight: float,
+    save: bool,
+) -> dict[str, Any]:
+    database.init_db(db_path)
+    enrichment: dict[str, dict[str, Any]] = {}
+    for name in dict.fromkeys(h["horse_name"] for h in horses if h.get("horse_name")):
+        enrichment[name] = scraper.enrich_horse(
+            name, db_path, offline=offline, csv_path=csv_path
+        )
+
+    races = _group_by_race(horses)
+    for race in races:
+        if save:
+            _save_race(race, db_path, warnings)
+        race["rows"] = analyze_race(race.pop("horses"), enrichment, threshold, prior_weight)
     return {"races": races, "enrichment": enrichment, "warnings": warnings}
 
 

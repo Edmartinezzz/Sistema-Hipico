@@ -227,6 +227,91 @@ def _mark_favorites(horses: list[dict[str, Any]]) -> None:
             horse["morning_line_favorite"] = best is not None and horse["odds"] == best
 
 
+_MONTHS = {
+    "jan": 1, "ene": 1, "feb": 2, "mar": 3, "apr": 4, "abr": 4, "may": 5, "jun": 6,
+    "jul": 7, "aug": 8, "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12, "dic": 12,
+}
+_MOVIL_DATE_RE = re.compile(r"\b(\d{1,2})([A-Za-z]{3})(\d{2})\b")
+_MOVIL_RACE_RE = re.compile(r"(?m)^\s*(\d{1,2})a\b")
+_MOVIL_TRACK_RE = re.compile(r"(?m)^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .]{3,})$")
+_MOVIL_DISTANCE_RE = re.compile(r"\b(\d{3,4})\s*metros", re.IGNORECASE)
+_MOVIL_SURFACE_RE = re.compile(r"\b(Arena|Grama)\b", re.IGNORECASE)
+_MOVIL_RECORD_RE = re.compile(r"Act:\s*\((\d+-\d+-\d+-\d+)\)")
+_MOVIL_PEDIGREE_RE = re.compile(r"^[A-Z]{2}\d+a-(.+?) en (.+)$")
+
+
+def _is_movil_table(rows: list[list[Any]]) -> bool:
+    text = " ".join(str(c) for row in rows[:3] for c in row if c)
+    return "N./ML" in text and "Stud/ejemplar" in text
+
+
+def _movil_race(row: list[Any]) -> dict[str, Any]:
+    """Lee fecha, hipódromo, carrera, distancia y superficie de la fila de título."""
+    text = "\n".join(str(c) for c in row if c)
+    race = _MOVIL_RACE_RE.search(text)
+    day = _MOVIL_DATE_RE.search(text)
+    track = _MOVIL_TRACK_RE.search(text)
+    distance = _MOVIL_DISTANCE_RE.search(text)
+    surface = _MOVIL_SURFACE_RE.search(text)
+    iso = None
+    if day and day.group(2).lower() in _MONTHS:
+        month = _MONTHS[day.group(2).lower()]
+        iso = f"{2000 + int(day.group(3)):04d}-{month:02d}-{int(day.group(1)):02d}"
+    return {
+        "race_number": int(race.group(1)) if race else None,
+        "date": iso,
+        "track": track.group(1).strip().title() if track else None,
+        "distance": f"{distance.group(1)} m" if distance else None,
+        "surface": surface.group(1).capitalize() if surface else None,
+    }
+
+
+def _movil_horse(row: list[Any]) -> dict[str, Any] | None:
+    cells = [str(c) for c in row if c not in (None, "")]
+    if len(cells) < 5 or not re.fullmatch(r"\d{1,2}[A-Z]?", cells[0].strip()):
+        return None
+    lines = [line.strip() for line in cells[1].splitlines() if line.strip()]
+    names = [line for line in lines if not line.startswith(("Stud:", "p. "))]
+    if not names:
+        return None
+    pedigree = _MOVIL_PEDIGREE_RE.match(names[1]) if len(names) > 1 else None
+    stud = next((line[5:].strip() for line in lines if line.startswith("Stud:")), None)
+    people = [line.strip() for line in cells[3].splitlines() if line.strip()]
+    record = _MOVIL_RECORD_RE.search(cells[4])
+    return {
+        "horse_name": names[0],
+        "jockey": people[0] if people else None,
+        "trainer": people[-1] if len(people) >= 4 else None,
+        "weight": _parse_number(people[1]) if len(people) > 1 else None,
+        "odds_raw": None,
+        "odds": None,
+        "implied_probability": None,
+        "odds_published": False,
+        "post_position": _parse_post(cells[2]),
+        "record": record.group(1) if record else None,
+        "stud": stud or None,
+        "sire": pedigree.group(1) if pedigree else None,
+        "dam": pedigree.group(2) if pedigree else None,
+    }
+
+
+def _extract_movil(pdf: Any) -> list[dict[str, Any]]:
+    """Lee una revista de Movil Hipismo: una tabla por carrera, sin cuotas publicadas."""
+    horses: list[dict[str, Any]] = []
+    for page_number, page in enumerate(pdf.pages, start=1):
+        for table in page.find_tables():
+            rows = table.extract()
+            if not rows or not _is_movil_table(rows):
+                continue
+            race = _movil_race(rows[0])
+            for row in rows[1:]:
+                horse = _movil_horse(row)
+                if horse:
+                    horses.append({**horse, **race, "page": page_number})
+    _mark_favorites(horses)
+    return horses
+
+
 def extract_races(pdf_path: str) -> list[dict]:
     """Convierte una gaveta en PDF en una lista de caballos (un dict por caballo y carrera).
 
@@ -245,6 +330,12 @@ def extract_races(pdf_path: str) -> list[dict]:
     """
     if not Path(pdf_path).is_file():
         raise FileNotFoundError(f"No existe el PDF: {pdf_path}")
+
+    with pdfplumber.open(pdf_path) as pdf:
+        first_page = (pdf.pages[0].extract_text() or "") if pdf.pages else ""
+        if "N./ML" in first_page and "Stud/ejemplar" in first_page:
+            logger.info("Formato Movil Hipismo detectado en %s", pdf_path)
+            return _extract_movil(pdf)
 
     horses: list[dict[str, Any]] = []
     meta: dict[str, str | None] = {"track": None, "date": None}

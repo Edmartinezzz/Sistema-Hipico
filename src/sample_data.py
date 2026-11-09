@@ -22,7 +22,14 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +156,74 @@ def create_sample_gaveta(
 
     SimpleDocTemplate(str(path), pagesize=A4).build(story)
     logger.info("Gaveta sintética creada en %s", path)
+    return path
+
+
+MOVIL_RACES: list[dict[str, Any]] = [
+    {
+        "race_number": 1,
+        "distance": 1200,
+        "horses": [
+            (1, "Reina Morena", "QUEEN DEMO", "Trueno Real", "Brisa Fina", "J. Pérez", "55",
+             "M. Rojas", "20-5-3-2"),
+            (2, "Los Pepos", "ESTRELLA FICTICIA", "Sol Naciente", "Luna Llena", "L. Gómez",
+             "54,5", "A. Díaz", "10-0-2-1"),
+            (3, "Play Monster", "PRUEBA VELOZ", "Viento Norte", "Mar Azul", "R. Silva", "53",
+             "P. León", "8-2-1-0"),
+        ],
+    },
+    {
+        "race_number": 2,
+        "distance": 1600,
+        "horses": [
+            (1, "Santa Rosalía", "ÁGUILA SINTÉTICA", "Cielo Abierto", "Nube Gris", "C. Mora",
+             "56", "J. Castro", "15-4-4-1"),
+            (2, "El Centauro", "DEMO DOS", "Río Grande", "Selva Verde", "E. Vera", "52",
+             "M. Rojas", "6-1-0-1"),
+        ],
+    },
+]
+
+
+def create_sample_movil(
+    path: str | Path, races: list[dict[str, Any]] | None = None, day: str = "08Nov26"
+) -> Path:
+    """Crea una revista sintética con el formato de Movil Hipismo (una carrera por página).
+
+    Cada caballo de ``races`` es una tupla ``(dorsal, stud, nombre, padre, madre,
+    jinete, peso, entrenador, récord)``. Todos los datos son ficticios.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    story: list[Any] = []
+    for index, race in enumerate(races or MOVIL_RACES):
+        rows = [
+            [f"{day}\n{race['race_number']}a\nDomingo", "", "LA RINCONADA\nG-1\n1:00 PM Arena",
+             "", "", f"{race['distance']}\nmetros", "", "", ""],
+            ["CONDICIONES SINTÉTICAS DE PRUEBA.\n"
+             "N./ML Stud/ejemplar/padres/haras PP Jin/Kgs/Ent Fec Hip Peso"] + [""] * 8,
+        ]
+        for number, stud, name, sire, dam, jockey, weight, trainer, record in race["horses"]:
+            rows.append([
+                str(number), f"Stud: {stud}\n{name}\nYC5a-{sire} en {dam}\np. Abuelo", "",
+                str(number), f"{jockey}\n{weight}\nL.BB.\n{trainer}", "",
+                f"01Oct LR1 4101200 11 1 1 54{jockey},5 Otro 1 G-1 50 75.0 76.0\n"
+                f"14d S/C Act: ({record}) $100", "", "",
+            ])
+        table = Table(rows)
+        table.setStyle(
+            TableStyle(
+                [
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                    ("SPAN", (0, 1), (-1, 1)),
+                    ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ]
+            )
+        )
+        if index:
+            story.append(PageBreak())
+        story.append(table)
+    SimpleDocTemplate(str(path), pagesize=A4).build(story)
     return path
 
 
