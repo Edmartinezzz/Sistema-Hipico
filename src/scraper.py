@@ -37,7 +37,6 @@ USER_AGENT = (
 )
 MIN_INTERVAL_SECONDS = 1.0
 MAX_RETRIES = 3
-MAX_REDIRECTS = 5
 DEFAULT_TIMEOUT = 10.0
 RETRY_STATUS = {429, 500, 502, 503, 504}
 
@@ -94,20 +93,24 @@ def rate_limited_get(url: str, **kwargs: Any) -> requests.Response:
     max_retries = int(kwargs.pop("max_retries", MAX_RETRIES))
     headers = {"User-Agent": USER_AGENT, **(kwargs.pop("headers", None) or {})}
     kwargs.setdefault("timeout", DEFAULT_TIMEOUT)
-    follow_redirects = kwargs.pop("allow_redirects", True)
+
+    def throttle_redirect(response: requests.Response, *args: Any, **kw: Any) -> None:
+        # requests sigue la redirección justo después de este hook.
+        if response.is_redirect:
+            target = urljoin(response.url, response.headers["Location"])
+            _wait_for_slot(_domain(target), min_interval)
+
+    hooks = kwargs.pop("hooks", None) or {}
+    response_hooks = hooks.get("response", [])
+    if callable(response_hooks):
+        response_hooks = [response_hooks]
+    hooks = {**hooks, "response": [*response_hooks, throttle_redirect]}
 
     attempt = 0
-    redirects = 0
     while True:
         _wait_for_slot(_domain(url), min_interval)
         try:
-            response = requests.get(url, headers=headers, allow_redirects=False, **kwargs)
-            if follow_redirects and response.is_redirect:
-                redirects += 1
-                if redirects > MAX_REDIRECTS:
-                    raise requests.TooManyRedirects(f"Demasiadas redirecciones desde {url}")
-                url = urljoin(url, response.headers["Location"])
-                continue
+            response = requests.get(url, headers=headers, hooks=hooks, **kwargs)
             if response.status_code not in RETRY_STATUS:
                 response.raise_for_status()
                 return response
@@ -325,7 +328,9 @@ def enrich_horse(
             logger.warning("No se pudo leer el CSV %s: %s", csv_path, exc)
             record = None
         if record:
-            if cached and cached["source"] == "csv" and cached["data"] == record:
+            source = record.get("source") or "csv"
+            data = {k: v for k, v in record.items() if k != "source"}
+            if cached and cached["source"] == source and cached["data"] == data:
                 return cached
             return _store_and_return(record, "csv", db_path)
     if cached:
