@@ -1202,8 +1202,12 @@ def _vista_movil() -> None:
     umbral = 0.05
     _aviso_ocr()
 
-    # Barra flotante inferior: herramientas (Semana/PDF/Ajustes) + navegación.
+    # Barra inferior deslizable: página 1 = secciones, página 2 = herramientas.
     with st.container(key="m_nav"):
+        seccion = st.segmented_control(
+            "Sección", SECCIONES_MOVIL, required=True, key="m_sec",
+            default="Resumen", label_visibility="collapsed", width="stretch",
+        ) or "Resumen"
         with st.container(key="m_tools"):
             c_semana, c_pdf, c_ajustes = st.columns(3)
             with c_semana.popover("Semana"):
@@ -1216,10 +1220,6 @@ def _vista_movil() -> None:
             with c_ajustes.popover("Ajustes"):
                 umbral = st.slider("Umbral de value bet", 0.0, 0.20, 0.05, 0.01)
                 st.caption("Uso informativo: no constituye recomendación de apuesta.")
-        seccion = st.segmented_control(
-            "Sección", SECCIONES_MOVIL, required=True, key="m_sec",
-            default="Resumen", label_visibility="collapsed", width="stretch",
-        ) or "Resumen"
 
     if not st.session_state.get("registros"):
         _html(ui.hero(

@@ -152,9 +152,12 @@ header[data-testid="stHeader"], div[data-testid="stToolbar"],
 div[data-testid="stSidebarCollapsedControl"], section[data-testid="stSidebar"],
 div[data-testid="stDecoration"], div[data-testid="stStatusWidget"],
 div[data-testid="stManageAppButton"], div[data-testid="stAppDeployButton"],
+div[data-testid="stDeployButton"], div[data-testid="stAppViewerBadge"],
 #stDecoration, #manage-app-button,
-.stAppDeployButton, [class*="viewerBadge"], [class*="deployButton"] {display: none !important;}
-.block-container {padding: .6rem .75rem 7.5rem !important; max-width: 100% !important;}
+.stAppDeployButton, [class*="viewerBadge"], [class*="deployButton"],
+a[href*="share.streamlit.io"][class*="badge"],
+a[href*="share.streamlit.io"][data-testid] {display: none !important;}
+.block-container {padding: .6rem .75rem 5.5rem !important; max-width: 100% !important;}
 .stMainBlockContainer {padding-top: .6rem !important;}
 
 /* Barra superior */
@@ -214,10 +217,16 @@ div[class*="st-key-m_ficha_"] button {padding: 0 .4rem !important; min-height: 1
 div[data-testid="stMetric"] {padding: .5rem .7rem !important;}
 div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
 
-/* Barra inferior plana tipo app: fila de herramientas + fila de iconos. */
+/* Barra inferior plana tipo app: páginas que se deslizan (iconos | herramientas). */
 .st-key-m_nav {position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
   background: #0A1A12; border-top: 1px solid #2A5A44;
   padding: .4rem .5rem calc(.45rem + env(safe-area-inset-bottom));}
+.st-key-m_nav {display: flex !important; flex-direction: row !important;
+  overflow-x: auto !important; scroll-snap-type: x mandatory;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;}
+.st-key-m_nav::-webkit-scrollbar {display: none;}
+.st-key-m_nav > * {min-width: 88% !important; flex-shrink: 0 !important;
+  scroll-snap-align: start;}
 .st-key-m_nav [data-testid="stButtonGroup"], .st-key-m_nav [data-testid="stButtonGroup"] > div {
   width: 100% !important; display: flex !important; flex-wrap: nowrap !important; gap: 0 !important;}
 .st-key-m_nav [data-testid="stButtonGroup"] button {flex: 1 1 0 !important; min-width: 0 !important;
@@ -238,7 +247,7 @@ div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
   border: 1px solid #D4AF37 !important;}
 
 /* El campo del chat no queda tapado por la barra inferior. */
-div[data-testid="stBottomBlockContainer"] {bottom: 6.8rem !important;}
+div[data-testid="stBottomBlockContainer"] {bottom: 4.8rem !important;}
 div[data-testid="stBottomBlockContainer"] > div {background: transparent !important;
   border-top: none !important;}
 </style>
