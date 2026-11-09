@@ -252,7 +252,7 @@ def extract_races(pdf_path: str) -> list[dict]:
     mapping: dict[str, int] | None = None
     columns: int | None = None
     any_text = False
-    race_details: dict[Any, dict[str, Any]] = {}
+    race_of: list[dict[str, Any] | None] = []
 
     with pdfplumber.open(pdf_path) as pdf:
         for page_number, page in enumerate(pdf.pages, start=1):
@@ -278,11 +278,9 @@ def extract_races(pdf_path: str) -> list[dict]:
                     race is not None and header["race_number"] == race["race_number"]
                 )
                 if header and same_race and race is not None:
-                    race = {**race, **{k: v for k, v in header.items() if v is not None}}
+                    race.update({k: v for k, v in header.items() if v is not None})
                 elif header:
                     race = header
-                if race is not None:
-                    race_details[race["race_number"]] = race
 
                 detected = detect_columns(rows)
                 if detected:
@@ -314,6 +312,7 @@ def extract_races(pdf_path: str) -> list[dict]:
                         page=page_number,
                     )
                     horses.append(horse)
+                    race_of.append(race)
 
     if not horses:
         if not any_text:
@@ -321,10 +320,10 @@ def extract_races(pdf_path: str) -> list[dict]:
         logger.warning("No se encontraron tablas de caballos en %s", pdf_path)
         return []
 
-    for horse in horses:
+    for horse, details in zip(horses, race_of):
         horse["track"] = horse["track"] or meta["track"]
         horse["date"] = horse["date"] or meta["date"]
-        details = race_details.get(horse["race_number"], {})
+        details = details or {}
         for field in ("distance", "surface"):
             horse[field] = horse[field] or details.get(field)
     _mark_favorites(horses)
