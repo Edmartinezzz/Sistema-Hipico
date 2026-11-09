@@ -5,7 +5,7 @@ gaveta (programa de carrera) en PDF, los enriquece con fuentes gratuitas, estima
 probabilidades con el modelo de Harville y muestra los resultados en un dashboard
 de Streamlit. La especificación completa está en [`PROJECT_SPEC.md`](PROJECT_SPEC.md).
 
-> Estado: en desarrollo (Sprint 1 — estructura y base de datos).
+> Estado: en desarrollo (Sprint 2 — extractor de PDF).
 
 ## Requisitos
 
@@ -45,6 +45,18 @@ database.save_entries(
 )
 print(database.get_horse_history("Relámpago"))
 ```
+
+## Extraer una gaveta en PDF
+
+```bash
+python -m src.sample_data data/samples/gaveta_ejemplo.pdf   # crea una gaveta sintética
+python -c "from src.pdf_extractor import extract_races; import pprint; pprint.pprint(extract_races('data/samples/gaveta_ejemplo.pdf')[:2])"
+```
+
+`extract_races()` reconoce encabezados como «Caballo/Ejemplar», «Jinete/Jockey/J.»,
+«Entrenador/E.», «Peso», «Cuota/ML», «Récord» y «#/Nº». Lee «Hipódromo:», «Fecha:» y los
+títulos «Carrera N» del texto, y une las tablas partidas entre páginas. Las cuotas se
+convierten a decimal («7-2» → 4.5) y a probabilidad implícita (1 / 4.5).
 
 ## Estructura
 
