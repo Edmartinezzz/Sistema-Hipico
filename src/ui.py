@@ -151,8 +151,10 @@ CSS_MOVIL = """
 header[data-testid="stHeader"], div[data-testid="stToolbar"],
 div[data-testid="stSidebarCollapsedControl"], section[data-testid="stSidebar"],
 div[data-testid="stDecoration"], div[data-testid="stStatusWidget"],
-.stAppDeployButton, [class*="viewerBadge"] {display: none !important;}
-.block-container {padding: .6rem .75rem 9.5rem !important; max-width: 100% !important;}
+div[data-testid="stManageAppButton"], div[data-testid="stAppDeployButton"],
+#stDecoration, #manage-app-button,
+.stAppDeployButton, [class*="viewerBadge"], [class*="deployButton"] {display: none !important;}
+.block-container {padding: .6rem .75rem 7.5rem !important; max-width: 100% !important;}
 .stMainBlockContainer {padding-top: .6rem !important;}
 
 /* Barra superior */
@@ -176,12 +178,14 @@ div[data-testid="stDecoration"], div[data-testid="stStatusWidget"],
 .tile .x {color: #8FB9A8; font-size: .72rem;}
 .m-h {font-family: Georgia, serif; font-size: 1.15rem; font-weight: 700; margin: .6rem 0 .4rem;}
 
-/* Herramientas dentro de la barra flotante inferior (con iconos) */
-.st-key-m_tools {margin-bottom: .45rem !important;}
-.st-key-m_tools button {width: 100% !important; min-height: 2.5rem !important;
-  font-weight: 700 !important; font-size: .9rem !important; border-radius: .7rem !important;
-  background: #13362A !important; border: 1px solid #2A5A44 !important;
-  padding: .4rem .3rem !important;}
+/* Herramientas en la barra inferior: fila horizontal compacta (con iconos) */
+.st-key-m_tools {margin-bottom: .2rem !important;}
+.st-key-m_tools [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .4rem !important;}
+.st-key-m_tools [data-testid="stColumn"] {flex: 1 1 0 !important; min-width: 0 !important;}
+.st-key-m_tools button {width: 100% !important; min-height: 2.3rem !important;
+  font-weight: 600 !important; font-size: .8rem !important; border-radius: .6rem !important;
+  background: transparent !important; border: 1px solid #2A5A44 !important;
+  padding: .35rem .2rem !important;}
 .st-key-m_tools [data-testid="stColumn"]:nth-child(1) button::before {content: "📅  ";}
 .st-key-m_tools [data-testid="stColumn"]:nth-child(2) button::before {content: "📄  ";}
 .st-key-m_tools [data-testid="stColumn"]:nth-child(3) button::before {content: "⚙️  ";}
@@ -210,31 +214,31 @@ div[class*="st-key-m_ficha_"] button {padding: 0 .4rem !important; min-height: 1
 div[data-testid="stMetric"] {padding: .5rem .7rem !important;}
 div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
 
-/* Barra flotante inferior: herramientas + navegación */
-.st-key-m_nav {position: fixed; left: .5rem; right: .5rem; bottom: calc(.5rem + env(safe-area-inset-bottom));
-  z-index: 1000; border-radius: 1rem;
-  background: rgba(9, 26, 19, .96); border: 1px solid #2A5A44;
-  padding: .55rem .6rem .5rem;
-  box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .45);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);}
+/* Barra inferior plana tipo app: fila de herramientas + fila de iconos. */
+.st-key-m_nav {position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
+  background: #0A1A12; border-top: 1px solid #2A5A44;
+  padding: .4rem .5rem calc(.45rem + env(safe-area-inset-bottom));}
 .st-key-m_nav [data-testid="stButtonGroup"], .st-key-m_nav [data-testid="stButtonGroup"] > div {
-  width: 100% !important; display: flex !important; flex-wrap: nowrap !important;}
-.st-key-m_nav button {flex: 1 1 0 !important; min-width: 0 !important; padding: .4rem .05rem !important;
-  border-radius: .7rem !important; font-weight: 700;
-  display: flex !important; flex-direction: column !important; align-items: center !important;
-  justify-content: center !important; gap: .1rem;}
-.st-key-m_nav [data-testid="stButtonGroup"] button::before {
-  font-size: 1.1rem; line-height: 1;}
+  width: 100% !important; display: flex !important; flex-wrap: nowrap !important; gap: 0 !important;}
+.st-key-m_nav [data-testid="stButtonGroup"] button {flex: 1 1 0 !important; min-width: 0 !important;
+  padding: .5rem .05rem !important; border-radius: .6rem !important; font-weight: 700;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  background: transparent !important; border: none !important;}
+.st-key-m_nav [data-testid="stButtonGroup"] button::before {font-size: 1.35rem; line-height: 1;}
 .st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(1)::before {content: "🏠";}
 .st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(2)::before {content: "🏇";}
 .st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(3)::before {content: "🏁";}
 .st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(4)::before {content: "📺";}
 .st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(5)::before {content: "📊";}
 .st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(6)::before {content: "💬";}
-.st-key-m_nav button p {font-size: .68rem !important; line-height: 1.1 !important;}
+/* Solo iconos: el texto queda oculto pero la sección elegida queda dorada. */
+.st-key-m_nav [data-testid="stButtonGroup"] button p {display: none !important;}
+.st-key-m_nav [data-testid="stButtonGroup"] button[aria-checked="true"] {
+  background: rgba(212, 175, 55, .22) !important;
+  border: 1px solid #D4AF37 !important;}
 
-/* El campo del chat no queda tapado por la barra flotante. */
-div[data-testid="stBottomBlockContainer"] {bottom: 9rem !important;}
+/* El campo del chat no queda tapado por la barra inferior. */
+div[data-testid="stBottomBlockContainer"] {bottom: 6.8rem !important;}
 div[data-testid="stBottomBlockContainer"] > div {background: transparent !important;
   border-top: none !important;}
 </style>
