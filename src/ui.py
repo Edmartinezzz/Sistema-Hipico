@@ -150,7 +150,7 @@ CSS_MOVIL = """
 /* Sin barra de Streamlit ni menú lateral: pantalla completa tipo app. */
 header[data-testid="stHeader"], div[data-testid="stToolbar"],
 div[data-testid="stSidebarCollapsedControl"], section[data-testid="stSidebar"] {display: none !important;}
-.block-container {padding: .6rem .75rem 6.5rem !important; max-width: 100% !important;}
+.block-container {padding: .6rem .75rem 9.5rem !important; max-width: 100% !important;}
 .stMainBlockContainer {padding-top: .6rem !important;}
 
 /* Barra superior */
@@ -174,9 +174,12 @@ div[data-testid="stSidebarCollapsedControl"], section[data-testid="stSidebar"] {
 .tile .x {color: #8FB9A8; font-size: .72rem;}
 .m-h {font-family: Georgia, serif; font-size: 1.15rem; font-weight: 700; margin: .6rem 0 .4rem;}
 
-/* Botones de la barra superior en una fila */
-.st-key-m_acciones {gap: .4rem !important;}
-.st-key-m_acciones button {padding: .3rem .7rem !important; min-height: 2.1rem !important; font-size: .85rem;}
+/* Herramientas dentro de la barra flotante inferior */
+.st-key-m_tools {margin-bottom: .45rem !important;}
+.st-key-m_tools button {width: 100% !important; min-height: 2.5rem !important;
+  font-weight: 700 !important; font-size: .9rem !important; border-radius: .7rem !important;
+  background: #13362A !important; border: 1px solid #2A5A44 !important;
+  padding: .4rem .3rem !important;}
 
 /* Lista de carreras: cada botón es una fila-tarjeta */
 .st-key-m_lista button {width: 100%; justify-content: flex-start !important; text-align: left;
@@ -202,11 +205,13 @@ div[class*="st-key-m_ficha_"] button {padding: 0 .4rem !important; min-height: 1
 div[data-testid="stMetric"] {padding: .5rem .7rem !important;}
 div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
 
-/* Navegación fija abajo */
-.st-key-m_nav {position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
-  background: rgba(9, 26, 19, .97); border-top: 1px solid #2A5A44;
-  padding: .4rem .5rem calc(.45rem + env(safe-area-inset-bottom));
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);}
+/* Barra flotante inferior: herramientas + navegación */
+.st-key-m_nav {position: fixed; left: .5rem; right: .5rem; bottom: calc(.5rem + env(safe-area-inset-bottom));
+  z-index: 1000; border-radius: 1rem;
+  background: rgba(9, 26, 19, .96); border: 1px solid #2A5A44;
+  padding: .55rem .6rem .5rem;
+  box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .45);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);}
 .st-key-m_nav [data-testid="stButtonGroup"], .st-key-m_nav [data-testid="stButtonGroup"] > div {
   width: 100% !important; display: flex !important; flex-wrap: nowrap !important;}
 .st-key-m_nav button {flex: 1 1 0 !important; min-width: 0 !important; padding: .55rem .1rem !important;

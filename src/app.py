@@ -1200,22 +1200,22 @@ def _vista_movil() -> None:
     _html(ui.barra_superior("Sistema Hípico", sub))
 
     umbral = 0.05
-    with st.container(key="m_acciones"):
-        c_semana, c_pdf, c_ajustes = st.columns(3)
-        with c_semana.popover("Semana"):
-            dia = st.date_input("Semana", key="semana", format="DD/MM/YYYY")
-            semana = _selector_reunion(dia, reuniones)
-            _nota_semana(dia, reuniones, semana)
-        with c_pdf.popover("PDF"):
-            offline = st.toggle("Enriquecimiento offline", value=True)
-            _cargar_pdf(offline)
-        with c_ajustes.popover("Ajustes"):
-            umbral = st.slider("Umbral de value bet", 0.0, 0.20, 0.05, 0.01)
-            st.caption("Uso informativo: no constituye recomendación de apuesta.")
     _aviso_ocr()
 
-    # Barra de navegación fija abajo (la CSS la saca del flujo normal).
+    # Barra flotante inferior: herramientas (Semana/PDF/Ajustes) + navegación.
     with st.container(key="m_nav"):
+        with st.container(key="m_tools"):
+            c_semana, c_pdf, c_ajustes = st.columns(3)
+            with c_semana.popover("Semana"):
+                dia = st.date_input("Semana", key="semana", format="DD/MM/YYYY")
+                semana = _selector_reunion(dia, reuniones)
+                _nota_semana(dia, reuniones, semana)
+            with c_pdf.popover("PDF"):
+                offline = st.toggle("Enriquecimiento offline", value=True)
+                _cargar_pdf(offline)
+            with c_ajustes.popover("Ajustes"):
+                umbral = st.slider("Umbral de value bet", 0.0, 0.20, 0.05, 0.01)
+                st.caption("Uso informativo: no constituye recomendación de apuesta.")
         seccion = st.segmented_control(
             "Sección", SECCIONES_MOVIL, required=True, key="m_sec",
             default="Resumen", label_visibility="collapsed", width="stretch",
