@@ -157,7 +157,7 @@ div[data-testid="stDeployButton"], div[data-testid="stAppViewerBadge"],
 .stAppDeployButton, [class*="viewerBadge"], [class*="deployButton"],
 a[href*="share.streamlit.io"][class*="badge"],
 a[href*="share.streamlit.io"][data-testid] {display: none !important;}
-.block-container {padding: .6rem .75rem 5.5rem !important; max-width: 100% !important;}
+.block-container {padding: .6rem .75rem 1rem 4.4rem !important; max-width: 100% !important;}
 .stMainBlockContainer {padding-top: .6rem !important;}
 
 /* Barra superior */
@@ -207,32 +207,26 @@ div[class*="st-key-m_ficha_"] button {padding: 0 .4rem !important; min-height: 1
 div[data-testid="stMetric"] {padding: .5rem .7rem !important;}
 div[data-testid="stMetricValue"] {font-size: 1.5rem !important;}
 
-/* Barra inferior plana tipo app: una fila de iconos, sin deslizamiento. */
-.st-key-m_nav {position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
-  background: #0A1A12; border-top: 1px solid #2A5A44;
-  padding: .4rem .5rem calc(.45rem + env(safe-area-inset-bottom));}
-.st-key-m_nav [data-testid="stButtonGroup"], .st-key-m_nav [data-testid="stButtonGroup"] > div {
-  width: 100% !important; display: flex !important; flex-wrap: nowrap !important; gap: 0 !important;}
-.st-key-m_nav [data-testid="stButtonGroup"] button {flex: 1 1 0 !important; min-width: 0 !important;
-  padding: .5rem .05rem !important; border-radius: .6rem !important; font-weight: 700;
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  background: transparent !important; border: none !important;}
-.st-key-m_nav [data-testid="stButtonGroup"] button::before {font-size: 1.35rem; line-height: 1;}
-.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(1)::before {content: "🏠";}
-.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(2)::before {content: "🏇";}
-.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(3)::before {content: "🏁";}
-.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(4)::before {content: "📺";}
-.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(5)::before {content: "📊";}
-.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(6)::before {content: "💬";}
-.st-key-m_nav [data-testid="stButtonGroup"] button:nth-child(7)::before {content: "⚙️";}
-/* Solo iconos: el texto queda oculto pero la sección elegida queda dorada. */
-.st-key-m_nav [data-testid="stButtonGroup"] button p {display: none !important;}
-.st-key-m_nav [data-testid="stButtonGroup"] button[aria-checked="true"] {
+/* Riel lateral izquierdo tipo app: un icono por sección, siempre visible.
+   Queda lejos del sello de Streamlit Cloud (esquina inferior derecha). */
+.st-key-m_nav {position: fixed; left: 0; top: 0; bottom: 0; z-index: 1000;
+  width: 3.6rem; background: #0A1A12; border-right: 1px solid #2A5A44;
+  padding: .5rem .35rem;}
+.st-key-m_nav > div, .st-key-m_nav [data-testid="stVerticalBlock"] {height: 100%;}
+.st-key-m_nav [data-testid="stVerticalBlock"] {justify-content: center;
+  gap: .35rem !important;}
+.st-key-m_nav button {width: 100%; min-height: 2.9rem !important;
+  border-radius: .7rem !important; background: transparent !important;
+  border: 1px solid transparent !important; padding: .15rem 0 !important;}
+.st-key-m_nav button p {font-size: 1.4rem !important; margin: 0 !important;
+  line-height: 1.2 !important;}
+.st-key-m_nav button[kind="primary"] {
   background: rgba(212, 175, 55, .22) !important;
   border: 1px solid #D4AF37 !important;}
 
-/* El campo del chat no queda tapado por la barra inferior. */
-div[data-testid="stBottomBlockContainer"] {bottom: 4.8rem !important;}
+/* El campo del chat queda libre del riel (izquierda) y del sello (derecha). */
+div[data-testid="stBottomBlockContainer"] {padding-left: 3.8rem !important;
+  padding-right: 4.4rem !important; bottom: 0 !important;}
 div[data-testid="stBottomBlockContainer"] > div {background: transparent !important;
   border-top: none !important;}
 </style>

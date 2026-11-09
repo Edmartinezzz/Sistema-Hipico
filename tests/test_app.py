@@ -76,20 +76,23 @@ def test_app_movil_resumen_y_carrera():
     at.run()
     assert not at.exception
     assert not at.tabs  # la vista móvil no usa pestañas
-    # Barra superior + navegación inferior (las herramientas son la sección Config).
+    # Barra superior + riel lateral de iconos (las herramientas son Config).
     assert len(at.get("popover")) == 0
-    nav = at.segmented_control[0]
-    assert nav.value == "Resumen"
+    assert not at.segmented_control
+    assert at.session_state["m_sec"] == "Resumen"
+    nav = {b.key: b for b in at.button if b.key.startswith("m_nav_")}
+    assert set(nav) == {f"m_nav_{s}" for s in (
+        "Resumen", "Domingo", "Carrera", "En vivo", "Lab", "Chat", "Config")}
     # Lista de carreras como botones grandes.
     assert any(b.label.startswith("C1") for b in at.button)
     # Entrar a la sección Carrera desde el resumen.
     at.button(key="m_carr_test_1").click().run()
     assert not at.exception
-    assert at.segmented_control[0].value == "Carrera"
+    assert at.session_state["m_sec"] == "Carrera"
     assert at.pills[0].value == 1
     assert sum(b.label == "Ver ficha" for b in at.button) == len(registros)
-    # Sección Domingo accesible desde la barra inferior.
-    at.segmented_control[0].set_value("Domingo").run()
+    # Sección Domingo accesible desde el riel lateral.
+    at.button(key="m_nav_Domingo").click().run()
     assert not at.exception
     assert any("Pronóstico del domingo" in m.value for m in at.markdown)
 
@@ -97,10 +100,10 @@ def test_app_movil_resumen_y_carrera():
 def test_app_movil_sin_reunion():
     at = _app_movil().run()
     assert not at.exception
-    assert at.segmented_control[0].value == "Resumen"
+    assert at.session_state["m_sec"] == "Resumen"
     assert any("elige la semana" in m.value for m in at.markdown)
     # La sección Config está accesible sin reunión cargada.
-    at.segmented_control[0].set_value("Config").run()
+    at.button(key="m_nav_Config").click().run()
     assert not at.exception
     assert at.date_input[0].label == "Semana"
 

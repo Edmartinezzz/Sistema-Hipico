@@ -1163,6 +1163,10 @@ def _tab_chat() -> None:
 # -------------------------------------------------------------- vista móvil
 
 SECCIONES_MOVIL = ["Resumen", "Domingo", "Carrera", "En vivo", "Lab", "Chat", "Config"]
+ICONOS_SEC = {
+    "Resumen": "🏠", "Domingo": "🏇", "Carrera": "🏁", "En vivo": "📺",
+    "Lab": "📊", "Chat": "💬", "Config": "⚙️",
+}
 
 
 def _vista() -> str:
@@ -1202,12 +1206,18 @@ def _vista_movil() -> None:
     umbral = float(st.session_state.get("umbral", 0.05))
     _aviso_ocr()
 
-    # Barra inferior: solo iconos de sección (Config abre las herramientas).
+    # Riel lateral izquierdo: un icono por sección, siempre visible y
+    # lejos del sello de Streamlit Cloud (abajo a la derecha).
+    seccion = st.session_state.setdefault("m_sec", "Resumen")
     with st.container(key="m_nav"):
-        seccion = st.segmented_control(
-            "Sección", SECCIONES_MOVIL, required=True, key="m_sec",
-            default="Resumen", label_visibility="collapsed", width="stretch",
-        ) or "Resumen"
+        for nombre in SECCIONES_MOVIL:
+            if st.button(
+                ICONOS_SEC[nombre], key=f"m_nav_{nombre}", help=nombre,
+                type="primary" if nombre == seccion else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state["m_sec"] = nombre
+                st.rerun()
 
     if not st.session_state.get("registros"):
         if seccion == "Config":
