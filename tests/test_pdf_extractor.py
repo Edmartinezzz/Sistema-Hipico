@@ -196,5 +196,6 @@ def test_tabla_sin_encabezados_bajo_otra_carrera_se_omite(tmp_path):
 def test_titulo_repetido_completa_datos_de_la_carrera(tmp_path):
     pdf = _pdf_continuacion(tmp_path / "det.pdf", "Carrera 1 — 1200 m — Arena")
     caballos = pdf_extractor.extract_races(pdf)
-    assert [c["surface"] for c in caballos][-1] is not None
-    assert caballos[-1]["distance"] == "1200 m"
+    assert len({c["surface"] for c in caballos}) == 1
+    assert caballos[0]["surface"] is not None
+    assert {c["distance"] for c in caballos} == {"1200 m"}
