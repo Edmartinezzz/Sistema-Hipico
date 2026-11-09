@@ -130,7 +130,7 @@ for carrera in resultado["races"]:
 ```
 src/
   pdf_extractor.py   PDF → lista de caballos por carrera
-  scraper.py         enriquecimiento: SQLite → CSV → HTTP (rate limit, offline)
+  scraper.py         enriquecimiento: CSV → SQLite → HTTP (rate limit, offline)
   harville_model.py  probabilidades, Harville, value bets, Kelly
   pipeline.py        une extractor + enriquecimiento + modelo
   database.py        capa SQLite
