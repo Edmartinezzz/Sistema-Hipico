@@ -199,3 +199,25 @@ def test_titulo_repetido_completa_datos_de_la_carrera(tmp_path):
     assert len({c["surface"] for c in caballos}) == 1
     assert caballos[0]["surface"] is not None
     assert {c["distance"] for c in caballos} == {"1200 m"}
+
+
+def test_extract_races_formato_movil_hipismo(tmp_path):
+    from src.sample_data import create_sample_movil
+
+    caballos = pdf_extractor.extract_races(str(create_sample_movil(tmp_path / "movil.pdf")))
+    assert [c["race_number"] for c in caballos] == [1, 1, 1, 2, 2]
+    primero = caballos[0]
+    assert primero["horse_name"] == "QUEEN DEMO"
+    assert (primero["jockey"], primero["trainer"], primero["weight"]) == (
+        "J. Pérez", "M. Rojas", 55.0
+    )
+    assert (primero["record"], primero["post_position"], primero["stud"]) == (
+        "20-5-3-2", 1, "Reina Morena"
+    )
+    assert (primero["sire"], primero["dam"]) == ("Trueno Real", "Brisa Fina")
+    assert (primero["date"], primero["track"], primero["distance"], primero["surface"]) == (
+        "2026-11-08", "La Rinconada", "1200 m", "Arena"
+    )
+    assert caballos[1]["weight"] == 54.5
+    assert caballos[3]["horse_name"] == "ÁGUILA SINTÉTICA" and caballos[3]["distance"] == "1600 m"
+    assert all(c["odds"] is None and c["odds_published"] is False for c in caballos)

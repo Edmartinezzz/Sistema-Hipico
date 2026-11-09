@@ -1,9 +1,9 @@
 # Sistema Hípico — análisis estadístico de carreras de caballos
 
-Sube una **gaveta** (programa de carreras) en PDF y obtén, por cada carrera, la
+Pulsa **Buscar gaceta de hoy** (o sube una **gaveta** en PDF) y obtén, por cada carrera, la
 probabilidad de victoria de cada caballo según el mercado y según un modelo de Harville
 ajustado por historial, el **edge** entre ambos y los posibles **value bets** resaltados en
-verde. Todo corre en tu PC, gratis y sin internet. La especificación completa está en
+verde. Todo corre en tu PC y es gratis; solo la búsqueda de la gaceta usa internet. La especificación completa está en
 [`PROJECT_SPEC.md`](PROJECT_SPEC.md).
 
 ![Dashboard con la gaveta de ejemplo](docs/captura.png)
@@ -55,8 +55,10 @@ streamlit run src/app.py
 
 Se abre el navegador en <http://localhost:8501>.
 
-1. Pulsa **Usar gaveta de ejemplo** para ver el análisis con datos sintéticos, o sube tu
-   gaveta en PDF y pulsa **Analizar**.
+1. Elige el hipódromo (La Rinconada o Valencia) y pulsa **Buscar gaceta de hoy**: la app
+   descarga la reunión de [Desafío Hípico](https://www.desafiohipico.com/retrospectos) y,
+   si falla, la revista PDF de pollamacaco.com (solo La Rinconada). También puedes pulsar
+   **Usar gaveta de ejemplo** o subir tu gaveta en PDF y pulsar **Analizar**.
 2. Revisa la tabla de cada carrera: Caballo, Jinete, Cuota, Prob. modelo, Prob. mercado,
    Edge, Value bet, Prob. top 3, Kelly, Récord y de dónde salió la forma (gaveta o
    historial). Las filas verdes son value bets.
@@ -92,6 +94,11 @@ En la barra lateral puedes:
   `src/pdf_extractor.py`; si alguna no se lee bien, guarda el PDF (sin subirlo al repo) y
   se puede adaptar.
 - El récord de la gaveta se interpreta como `carreras-1.º-2.º-3.º`.
+- Las gacetas de internet **no traen cuotas**: la app calcula la Prob. modelo con el
+  historial del caballo y un mercado uniforme, pero sin cuotas no hay Prob. mercado, edge,
+  value bets ni Kelly.
+- Las fuentes en línea pueden cambiar su diseño sin aviso; si la búsqueda falla, la app
+  lo dice y puedes subir el PDF a mano.
 - No hay scrapers de DRF ni Brisnet (ver [`docs/fuentes_datos.md`](docs/fuentes_datos.md)).
 
 ## Variables de entorno (opcionales)
@@ -129,7 +136,8 @@ for carrera in resultado["races"]:
 
 ```
 src/
-  pdf_extractor.py   PDF → lista de caballos por carrera
+  pdf_extractor.py   PDF → lista de caballos por carrera (incluye formato Movil Hipismo)
+  gaceta_online.py   busca la gaceta del día (Desafío Hípico → pollamacaco.com)
   scraper.py         enriquecimiento: CSV → SQLite → HTTP (rate limit, offline)
   harville_model.py  probabilidades, Harville, value bets, Kelly
   pipeline.py        une extractor + enriquecimiento + modelo
