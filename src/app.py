@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import sys
 import tempfile
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -31,6 +31,7 @@ import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from src import (  # noqa: E402
+    animalitos,
     archivo,
     chat_ia,
     hipodromos_usa,
@@ -1018,6 +1019,152 @@ def _tab_usa() -> None:
         )
 
 
+# -------------------------------------------------------------- animalitos
+
+
+def _tab_animalitos() -> None:
+    """Animalitos: historial real de sorteos y estadísticas por día."""
+    st.markdown("### Animalitos de Venezuela")
+    st.caption(
+        "Historial real de sorteos (ResultadosVenezuela): qué animalitos "
+        "se repiten más cada día de la semana, enjaulados y rachas. Los "
+        "sorteos son aleatorios — el historial no garantiza resultados."
+    )
+    c1, c2, c3 = st.columns([2, 1, 1])
+    slug = c1.selectbox(
+        "Lotería", list(animalitos.LOTERIAS),
+        format_func=lambda s: animalitos.LOTERIAS[s], key="an_lot",
+    )
+    semanas = c2.selectbox(
+        "Historial", [4, 8, 12, 20], index=1,
+        format_func=lambda s: f"{s} semanas", key="an_sem",
+    )
+    if c3.button("Cargar historial", key="an_cargar", width="stretch"):
+        barra = st.progress(0.0)
+        try:
+            sorteos = animalitos.historial(
+                slug, semanas * 7,
+                progreso=lambda i, t: barra.progress(i / t),
+            )
+        except animalitos.AnimalitosError as exc:
+            barra.empty()
+            st.error(str(exc))
+            return
+        barra.empty()
+        if sorteos:
+            st.session_state["animalitos"] = {"slug": slug, "sorteos": sorteos}
+        else:
+            st.warning("La fuente no devolvió resultados para esas fechas.")
+            return
+    datos = st.session_state.get("animalitos")
+    if not datos or not datos.get("sorteos"):
+        st.info("Elige la lotería y pulsa «Cargar historial».")
+        return
+    sorteos = datos["sorteos"]
+    nombre_lot = animalitos.LOTERIAS.get(datos["slug"], datos["slug"])
+    res = animalitos.resumen(sorteos)
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Sorteos", res["sorteos"])
+    m2.metric("Días", res["dias"])
+    m3.metric("Animalitos", res["animales"])
+    m4.metric("Periodo", f"{res['desde'][5:]}→{res['hasta'][5:]}")
+
+    # Por defecto se analiza mañana: "qué sale un miércoles" si mañana lo es.
+    manana = (date.today() + timedelta(days=1)).weekday()
+    d1, d2 = st.columns(2)
+    dia = d1.selectbox(
+        "Día a analizar", range(7), index=manana,
+        format_func=lambda i: animalitos.DIAS[i], key="an_dia",
+    )
+    horas = animalitos.horas_disponibles(sorteos, dia)
+    hora = d2.selectbox(
+        "Sorteo", ["Todas las horas"] + horas, key="an_hora",
+    )
+    tabla = animalitos.tabla_dia(
+        sorteos, dia, None if hora == "Todas las horas" else hora
+    )
+    nombre_dia = animalitos.DIAS[dia]
+    dia_plural = nombre_dia.lower()
+    if not dia_plural.endswith("s"):
+        dia_plural += "s"
+    st.markdown(f"**Los que más repiten los {dia_plural}**")
+    columnas = st.columns(5)
+    for col, fila in zip(columnas, [f for f in tabla if f["veces"]][:5]):
+        col.metric(
+            f"{fila['numero']} {fila['nombre']}",
+            f"{fila['veces']}x de {fila['sorteos']}",
+            f"{ui.pct(fila['prob'])} est.",
+        )
+    df = pd.DataFrame(
+        [
+            {
+                "#": f["numero"],
+                "Animalito": f["nombre"],
+                "Veces": f["veces"],
+                "Días que salió": f["dias"],
+                f"Sorteos ({nombre_dia})": f["sorteos"],
+                "Prob. est.": ui.pct(f["prob"]),
+                "Prob. teórica": ui.pct(f["prob_teorica"]),
+            }
+            for f in tabla
+        ]
+    )
+    st.dataframe(df, hide_index=True, width="stretch")
+    st.caption(
+        f"De {tabla[0]['sorteos'] if tabla else 0} sorteos de {nombre_lot} "
+        f"un {nombre_dia.lower()}. Prob. est. = frecuencia del día con "
+        "suavizado; la teórica es el azar puro (1/N)."
+    )
+
+    e1, e2 = st.columns(2)
+    with e1:
+        st.markdown("**Enjaulados** (más tiempo sin salir)")
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "#": e["numero"], "Animalito": e["nombre"],
+                        "Sin salir": f"{e['dias_sin_salir']} días",
+                        "Última vez": e["ultima_vez"],
+                    }
+                    for e in animalitos.enjaulados(sorteos, 8)
+                ]
+            ),
+            hide_index=True, width="stretch",
+        )
+    with e2:
+        st.markdown("**Calientes** (últimos 7 días)")
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "#": c["numero"], "Animalito": c["nombre"],
+                        "Veces": c["veces"],
+                    }
+                    for c in animalitos.calientes(sorteos)
+                ]
+            ),
+            hide_index=True, width="stretch",
+        )
+
+    top5 = [f for f in tabla if f["veces"]][:5]
+    if top5:
+        texto = (
+            f"ANIMALITOS {nombre_lot.upper()} · datos de los {dia_plural}\n"
+            + "\n".join(
+                f"{f['numero']} {f['nombre']} — salió {f['veces']}x de "
+                f"{f['sorteos']} sorteos"
+                for f in top5
+            )
+            + "\nFrecuencias históricas — uso informativo, no garantía."
+        )
+        st.link_button(
+            "Compartir por WhatsApp",
+            f"https://wa.me/?text={quote(texto)}",
+            width="stretch",
+        )
+
+
 # ------------------------------------------------------------------ domingo
 
 
@@ -1296,11 +1443,12 @@ def _tab_chat() -> None:
 # -------------------------------------------------------------- vista móvil
 
 SECCIONES_MOVIL = [
-    "Resumen", "Domingo", "Carrera", "USA", "En vivo", "Lab", "Chat", "Config",
+    "Resumen", "Domingo", "Carrera", "USA", "Anim.", "En vivo", "Lab",
+    "Chat", "Config",
 ]
 ICONOS_SEC = {
     "Resumen": "🏠", "Domingo": "🏇", "Carrera": "🏁", "USA": "🇺🇸",
-    "En vivo": "📺", "Lab": "📊", "Chat": "💬", "Config": "⚙️",
+    "Anim.": "🐾", "En vivo": "📺", "Lab": "📊", "Chat": "💬", "Config": "⚙️",
 }
 
 
@@ -1366,6 +1514,8 @@ def _vista_movil() -> None:
             _movil_config(reuniones)
         elif seccion == "USA":
             _movil_usa()
+        elif seccion == "Anim.":
+            _tab_animalitos()
         else:
             _html(ui.hero(
                 "Sistema Hípico", "Análisis Estadístico de Caballos",
@@ -1378,6 +1528,8 @@ def _vista_movil() -> None:
         _movil_config(reuniones)
     elif seccion == "USA":
         _movil_usa()
+    elif seccion == "Anim.":
+        _tab_animalitos()
     elif seccion == "Carrera":
         _movil_carrera(umbral)
     elif seccion == "En vivo":
@@ -1622,9 +1774,9 @@ def main() -> None:
 
     _selector_gaceta(offline)
 
-    tab_domingo, tab_reunion, tab_carrera, tab_vivo, tab_usa, tab_lab, tab_chat = st.tabs(
+    tab_domingo, tab_reunion, tab_carrera, tab_vivo, tab_usa, tab_anim, tab_lab, tab_chat = st.tabs(
         ["Domingo", "Reunión", "Carrera", "En vivo", "EE.UU.",
-         "Laboratorio", "Chat IA"]
+         "Animalitos", "Laboratorio", "Chat IA"]
     )
     try:
         if st.session_state.get("registros"):
@@ -1648,6 +1800,8 @@ def main() -> None:
             _tab_en_vivo()
         with tab_usa:
             _tab_usa()
+        with tab_anim:
+            _tab_animalitos()
         with tab_lab:
             _tab_laboratorio()
         with tab_chat:
