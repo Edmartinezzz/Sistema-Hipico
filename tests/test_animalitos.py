@@ -19,6 +19,8 @@ def _pagina(cards: list[tuple[str, str, str, str]]) -> str:
     """HTML sintético con tarjetas (hora, número, nombre, fecha)."""
     cuerpo = "".join(
         f'<div class="result-card"><div class="card-time">{h}</div>'
+        f'<div class="card-image-wrapper"><img src="https://resultadosvenezuela.com'
+        f'/assets/images/animales/lotto-activo/{a}_1.webp"/></div>'
         f'<div class="card-number">{n}</div>'
         f'<div class="card-name">{a}</div>'
         f'<div class="card-date">{f}</div></div>'
@@ -56,6 +58,7 @@ def test_parse_dia_extrae_campos():
     assert sorteos[0]["dia_semana"] == "Lunes"
     assert sorteos[0]["hora24"] == 9
     assert sorteos[2]["hora24"] == 19
+    assert sorteos[0]["imagen"].endswith("/animales/lotto-activo/León_1.webp")
 
 
 def test_parse_dia_ignora_tarjetas_incompletas():
@@ -146,3 +149,59 @@ def test_horas_disponibles_ordenadas():
 def test_historial_loteria_desconocida():
     with pytest.raises(an.AnimalitosError):
         an.historial("no-existe", 3)
+
+
+class _Resp:
+    """Respuesta falsa para rate_limited_get."""
+
+    def __init__(self, status: int, tipo: str = "image/webp"):
+        self.status_code = status
+        self.headers = {"Content-Type": tipo}
+
+
+def test_mapa_animales_guarda_y_completa(tmp_path, monkeypatch):
+    fecha = date(2026, 11, 9)
+    s = _sorteo(fecha, "05", "León")
+    s["imagen"] = "https://img.test/leon.webp"
+    monkeypatch.setattr(an, "rate_limited_get", lambda u: _Resp(404))
+    mapa = an.mapa_animales("lotto-activo", [s], tmp_path)
+    assert mapa["05"] == {"nombre": "León", "imagen": "https://img.test/leon.webp"}
+    # Persiste en disco aunque la siguiente llamada no traiga imagen.
+    s2 = _sorteo(fecha, "07", "Perico")
+    monkeypatch.setattr(
+        an, "_get_html",
+        lambda u: _pagina([("09:00 AM", "05", "León", "09/11/2026")]),
+    )
+    mapa = an.mapa_animales("lotto-activo", [s2], tmp_path)
+    assert mapa["05"]["imagen"].endswith("_1.webp")  # la fuente real gana
+    assert mapa["07"]["nombre"] == "Perico"
+    assert not mapa["07"].get("imagen")
+    assert mapa["07"]["sin_img"]  # la URL construida dio 404: no reintentar
+
+
+def test_mapa_animales_siembra_si_no_hay_imagenes(tmp_path, monkeypatch):
+    # Sin mapa previo ni imágenes: pide un día fresco a la fuente.
+    fecha = date(2026, 11, 9)
+    html = _pagina([("09:00 AM", "05", "León", "09/11/2026")])
+    monkeypatch.setattr(an, "_get_html", lambda u: html)
+    monkeypatch.setattr(an, "rate_limited_get", lambda u: _Resp(200))
+    mapa = an.mapa_animales("lotto-activo", [_sorteo(fecha, "07", "Perico")], tmp_path)
+    assert mapa["05"]["imagen"].endswith("León_1.webp")
+    # Perico no salió en la página: su dibujo se resolvió por URL patrón.
+    assert "Perico_1.webp" in mapa["07"]["imagen"]
+
+
+def test_tira_animalitos_con_y_sin_imagen():
+    from src import ui
+
+    items = [
+        {"numero": "05", "nombre": "León", "veces": 6, "sorteos": 89,
+         "prob": 0.055, "imagen": "https://img.test/leon.webp"},
+        {"numero": "07", "nombre": "Perico", "veces": 4, "sorteos": 89,
+         "prob": 0.04, "imagen": None},
+    ]
+    html = ui.tira_animalitos(items)
+    assert 'class="an-tira"' in html
+    assert 'src="https://img.test/leon.webp"' in html
+    assert 'class="an-img an-num">07<' in html
+    assert "an-item top" in html  # el primero se destaca

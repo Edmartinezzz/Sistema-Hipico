@@ -120,6 +120,26 @@ div[data-testid="stMetric"] {background: var(--panel); border-radius: 1rem;
   animation: entrada .3s ease both;}
 div[data-testid="stMetricValue"] {color: var(--azul); font-family: Georgia, serif;}
 div[data-testid="stChatMessage"] {animation: entrada .3s ease both;}
+/* Tira de animalitos: una sola fila con el dibujo de cada animal. */
+.an-tira {display: flex; gap: .45rem; margin: .4rem 0 .9rem;
+  overflow-x: auto; padding-bottom: .3rem; scrollbar-width: thin;}
+.an-item {flex: 1 1 0; min-width: 2.9rem; background: var(--panel);
+  border: 1px solid var(--borde); border-radius: .8rem; padding: .5rem .3rem;
+  text-align: center; animation: entrada .35s ease both;
+  transition: transform .15s ease, border-color .15s ease;}
+.an-item:hover {transform: translateY(-2px); border-color: #2E4A75;}
+.an-item.top {border-color: var(--azul); box-shadow: 0 0 14px rgba(59,157,255,.25);}
+.an-img {width: 2.4rem; height: 2.4rem; object-fit: contain; margin: 0 auto;
+  display: block; filter: drop-shadow(0 3px 6px rgba(0,0,0,.5));}
+.an-num {display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1.05rem; color: var(--azul);
+  background: rgba(59,157,255,.12); border-radius: 50%;
+  border: 1px solid var(--borde);}
+.an-nom {font-size: .68rem; font-weight: 600; color: var(--texto);
+  margin-top: .3rem; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis;}
+.an-vez {font-size: .62rem; color: var(--muted);}
+.an-prob {font-size: .72rem; font-weight: 700; color: var(--azul2);}
 /* Tarjeta de caballo + botón "Ficha" en la misma fila. Solo la fila interna
    (la que no contiene otras columnas), no la de tarjetas + gráfico. */
 div[data-testid="stHorizontalBlock"]:has(.horse-card):not(:has(div[data-testid="stHorizontalBlock"])) {
@@ -289,6 +309,31 @@ def tiles(items: list[tuple[str, Any, str | None]]) -> str:
         for l, v, x in items
     )
     return f'<div class="tiles">{celdas}</div>'
+
+
+def tira_animalitos(items: list[dict[str, Any]]) -> str:
+    """Fila única con los animalitos más probables (dibujo + frecuencia).
+
+    ``items`` son filas de ``animalitos.tabla_dia`` más la clave opcional
+    ``imagen`` (URL del dibujo; si falta se muestra el número en un círculo).
+    """
+    celdas = ""
+    for i, f in enumerate(items):
+        img = f.get("imagen")
+        figura = (
+            f'<img class="an-img" src="{escape(str(img))}" '
+            f'alt="{escape(str(f["nombre"]))}" loading="lazy"/>'
+            if img
+            else f'<div class="an-img an-num">{escape(str(f["numero"]))}</div>'
+        )
+        veces = f"{f['veces']}x de {f['sorteos']}" if f.get("sorteos") else "—"
+        celdas += (
+            f'<div class="an-item{" top" if i == 0 else ""}">{figura}'
+            f'<div class="an-nom">{escape(str(f["numero"]))} {escape(str(f["nombre"]))}</div>'
+            f'<div class="an-vez">{escape(veces)}</div>'
+            f'<div class="an-prob">{pct(f.get("prob"))}</div></div>'
+        )
+    return f'<div class="an-tira">{celdas}</div>'
 
 
 def barra_superior(titulo: str, subtitulo: str) -> str:

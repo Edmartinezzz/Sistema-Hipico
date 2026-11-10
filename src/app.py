@@ -1087,14 +1087,11 @@ def _tab_animalitos() -> None:
     dia_plural = nombre_dia.lower()
     if not dia_plural.endswith("s"):
         dia_plural += "s"
-    st.markdown(f"**Los que más repiten los {dia_plural}**")
-    columnas = st.columns(5)
-    for col, fila in zip(columnas, [f for f in tabla if f["veces"]][:5]):
-        col.metric(
-            f"{fila['numero']} {fila['nombre']}",
-            f"{fila['veces']}x de {fila['sorteos']}",
-            f"{ui.pct(fila['prob'])} est.",
-        )
+    st.markdown(f"**Los 7 más probables para el {dia_plural}**")
+    mapa = animalitos.mapa_animales(datos["slug"], sorteos)
+    for f in tabla:
+        f["imagen"] = (mapa.get(f["numero"]) or {}).get("imagen")
+    _html(ui.tira_animalitos(tabla[:7]))
     df = pd.DataFrame(
         [
             {

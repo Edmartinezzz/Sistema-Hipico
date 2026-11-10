@@ -26,10 +26,12 @@ import json
 import logging
 import re
 import time
+import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from src.scraper import rate_limited_get
 
@@ -108,6 +110,10 @@ def parse_dia(html: str, slug: str, fecha: date) -> list[dict[str, Any]]:
             num = int(numero)
         except ValueError:
             num = None
+        img_el = tarjeta.find("img")
+        imagen = img_el.get("src", "") if img_el else ""
+        if imagen and imagen.startswith("/"):
+            imagen = f"{BASE_URL}{imagen}"
         sorteos.append(
             {
                 "loteria": slug,
@@ -118,6 +124,7 @@ def parse_dia(html: str, slug: str, fecha: date) -> list[dict[str, Any]]:
                 "numero": numero,
                 "num": num,
                 "nombre": nombre,
+                "imagen": imagen or None,
             }
         )
     return sorteos
@@ -180,6 +187,96 @@ def animales(sorteos: list[dict[str, Any]]) -> dict[str, str]:
     mapa: dict[str, str] = {}
     for s in sorteos:
         mapa.setdefault(s["numero"], s["nombre"])
+    return mapa
+
+
+def _mapa_path(slug: str, cache_dir: str | Path) -> Path:
+    return Path(cache_dir) / f"{slug}_mapa.json"
+
+
+def mapa_animales(
+    slug: str,
+    sorteos: list[dict[str, Any]] | None = None,
+    cache_dir: str | Path = CACHE_DIR,
+) -> dict[str, dict[str, str]]:
+    """Mapa persistente número → ``{"nombre", "imagen"}`` de una lotería.
+
+    Se llena con las páginas ya descargadas y, si aún no conoce ninguna
+    imagen (caché vieja sin ese campo), pide un día fresco a la fuente
+    para sembrarlo. Solo es una petición extra la primera vez.
+    """
+    ruta = _mapa_path(slug, cache_dir)
+    mapa: dict[str, dict[str, str]] = {}
+    if ruta.exists():
+        try:
+            mapa = json.loads(ruta.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            mapa = {}
+    for s in sorteos or []:
+        entrada = mapa.setdefault(s["numero"], {"nombre": s["nombre"]})
+        entrada["nombre"] = s["nombre"]
+        if s.get("imagen"):
+            entrada["imagen"] = s["imagen"]
+
+    def _cobertura() -> float:
+        if not mapa:
+            return 0.0
+        return sum(1 for v in mapa.values() if v.get("imagen")) / len(mapa)
+
+    # Sembrado: si la mayoría no tiene dibujo (caché vieja sin ese campo),
+    # pedir días recientes frescos hasta cubrir ~90% o probar una semana.
+    for retroceso in range(7):
+        if _cobertura() >= 0.9:
+            break
+        fecha = date.today() - timedelta(days=retroceso)
+        try:
+            fresco = parse_dia(
+                _get_html(f"{BASE_URL}/lottery/{slug}?date={fecha.isoformat()}"),
+                slug,
+                fecha,
+            )
+        except AnimalitosError:
+            continue
+        for s in fresco:
+            entrada = mapa.setdefault(s["numero"], {"nombre": s["nombre"]})
+            entrada["nombre"] = s["nombre"]
+            if s.get("imagen"):
+                entrada["imagen"] = s["imagen"]
+        if not fresco and retroceso > 2:
+            break
+
+    # Último recurso: el dibujo sigue un patrón fijo por lotería
+    # (`assets/images/animales/<slug>/<Nombre sin acentos>_1.webp`);
+    # verificar que exista para no mostrar una imagen rota.
+    for entrada in mapa.values():
+        if (
+            entrada.get("imagen")
+            or entrada.get("sin_img")
+            or not entrada.get("nombre")
+        ):
+            continue
+        nombre = "".join(
+            c
+            for c in unicodedata.normalize("NFD", entrada["nombre"])
+            if unicodedata.category(c) != "Mn"
+        )
+        url = (
+            f"{BASE_URL}/assets/images/animales/{slug}/"
+            f"{quote(nombre)}_1.webp"
+        )
+        try:
+            respuesta = rate_limited_get(url)
+        except Exception:  # noqa: BLE001 - red caída: se reintenta luego
+            continue
+        if respuesta.status_code == 200 and "image" in (
+            respuesta.headers.get("Content-Type") or ""
+        ):
+            entrada["imagen"] = url
+        elif respuesta.status_code == 404:
+            entrada["sin_img"] = True
+    if mapa:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        ruta.write_text(json.dumps(mapa, ensure_ascii=False), encoding="utf-8")
     return mapa
 
 
