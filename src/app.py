@@ -30,7 +30,15 @@ if str(RAIZ) not in sys.path:
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from src import archivo, chat_ia, laboratorio, ocr_gaceta, telegram, ui  # noqa: E402
+from src import (  # noqa: E402
+    archivo,
+    chat_ia,
+    hipodromos_usa,
+    laboratorio,
+    ocr_gaceta,
+    telegram,
+    ui,
+)
 from src.modelo import MODELO_PATH, NOMBRES, Predictor, entrenar_desde_archivo  # noqa: E402
 from src.analisis import (  # noqa: E402
     agrupar_por_carrera,
@@ -332,6 +340,90 @@ def _nota_semana(dia: date, reuniones: list[dict], semana: list[dict]) -> None:
             f"Semana del {_fecha_corta(lunes)} al {_fecha_corta(domingo)}. La web "
             f"conserva reuniones del {min(fechas):%d/%m/%Y} al {max(fechas):%d/%m/%Y}."
         )
+
+
+# --------------------------------------------------------------- EE.UU.
+
+
+SLOTS_USA = {
+    "today": "Hoy",
+    "tomorrow": "Mañana",
+    "future": "Próximos días",
+    "past": "Carreras pasadas",
+}
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def _tarjetas_usa() -> list[dict]:
+    """Tarjetas de todos los hipódromos publicados por Equibase."""
+    return hipodromos_usa.list_meetings()
+
+
+def _cargar_tarjeta_usa(reunion: dict) -> None:
+    """Descarga una tarjeta USA y la pone como reunión activa."""
+    try:
+        with st.spinner(
+            f"Descargando la tarjeta de {reunion['track_name']} "
+            "(Equibase, todas las carreras)..."
+        ):
+            datos = hipodromos_usa.fetch_meeting(dict(reunion))
+    except hipodromos_usa.HipodromosUsaError as exc:
+        st.error(f"No se pudo cargar la tarjeta: {exc}")
+        return
+    fecha = reunion["date"]
+    if isinstance(fecha, str):
+        fecha = date.fromisoformat(fecha[:10])
+    _cargar_registros(
+        hipodromos_usa.meeting_to_records(datos),
+        f"usa_{reunion['track_code']}_{fecha:%Y%m%d}",
+        {
+            "kicker": "EE.UU. · Equibase",
+            "track": reunion["track_name"],
+            "date": fecha,
+            "number": None,
+            "retirados": hipodromos_usa.scratched(datos),
+            "usa_reunion": reunion,
+        },
+    )
+    st.session_state["m_sec"] = "Resumen"
+
+
+def _panel_usa(clave: str) -> None:
+    """Selector de tarjeta USA: día (hoy/mañana/futuro) + hipódromo."""
+    try:
+        tarjetas = _tarjetas_usa()
+    except hipodromos_usa.HipodromosUsaError as exc:
+        st.error(f"No se pudo leer el índice de Equibase: {exc}")
+        if st.button("Reintentar", key=f"usa_retry_{clave}"):
+            _tarjetas_usa.clear()
+            st.rerun()
+        return
+    st.caption(
+        "Datos oficiales de Equibase (entries): bolsa, distancia, "
+        "superficie, jinete, entrenador, peso y línea matutina. La M/L "
+        "se usa como cuota del mercado para los value bets."
+    )
+    dias = [s for s in SLOTS_USA if any(r["slot"] == s for r in tarjetas)]
+    slot = st.radio(
+        "Día", dias, format_func=lambda s: SLOTS_USA[s],
+        key=f"usa_slot_{clave}", horizontal=True,
+    )
+    opciones = [r for r in tarjetas if r["slot"] == slot]
+    sel = st.selectbox(
+        "Hipódromo",
+        opciones,
+        key=f"usa_track_{clave}",
+        format_func=lambda r: (
+            f"{r['track_name']} · {r['date']:%d/%m/%Y}"
+            + (f" · {r['country']}" if r["country"] != "USA" else "")
+        ),
+    )
+    if st.button(
+        "Cargar tarjeta", key=f"usa_load_{clave}",
+        type="primary", width="stretch",
+    ):
+        _cargar_tarjeta_usa(sel)
+        st.rerun()
 
 
 def _selector_reunion(dia: date, reuniones: list[dict]) -> list[dict]:
@@ -912,6 +1004,20 @@ def _tab_laboratorio() -> None:
         _actualizar_y_reentrenar()
 
 
+def _tab_usa() -> None:
+    """Pestaña EE.UU.: elegir hipódromo y cargar su tarjeta Equibase."""
+    st.markdown("### Hipódromos de EE.UU. y Canadá")
+    _panel_usa("pc")
+    if st.session_state.get("registros") and st.session_state["meta"].get(
+        "usa_reunion"
+    ):
+        meta = st.session_state["meta"]
+        st.success(
+            f"Tarjeta cargada: {meta['track']} · {meta['date']:%d/%m/%Y}. "
+            "Analízala en las pestañas Reunión, Carrera y Domingo."
+        )
+
+
 # ------------------------------------------------------------------ domingo
 
 
@@ -961,8 +1067,13 @@ def _texto_pronostico(prons: list[dict], meta: dict) -> str:
 
 
 def _recargar_reunion() -> None:
-    """Vuelve a descargar la reunión web: refresca retirados y estado."""
+    """Vuelve a descargar la reunión web/tarjeta USA: refresca retirados."""
     meta = st.session_state.get("meta") or {}
+    if meta.get("usa_reunion"):
+        _cargar_tarjeta_usa(dict(meta["usa_reunion"]))
+        if st.session_state.get("meta", {}).get("usa_reunion"):
+            st.success("Tarjeta actualizada: retirados y estado al día.")
+        return
     reunion_id = meta.get("reunion_id")
     if not reunion_id:
         st.warning("Solo se pueden refrescar reuniones cargadas desde la web.")
@@ -1184,10 +1295,12 @@ def _tab_chat() -> None:
 
 # -------------------------------------------------------------- vista móvil
 
-SECCIONES_MOVIL = ["Resumen", "Domingo", "Carrera", "En vivo", "Lab", "Chat", "Config"]
+SECCIONES_MOVIL = [
+    "Resumen", "Domingo", "Carrera", "USA", "En vivo", "Lab", "Chat", "Config",
+]
 ICONOS_SEC = {
-    "Resumen": "🏠", "Domingo": "🏇", "Carrera": "🏁", "En vivo": "📺",
-    "Lab": "📊", "Chat": "💬", "Config": "⚙️",
+    "Resumen": "🏠", "Domingo": "🏇", "Carrera": "🏁", "USA": "🇺🇸",
+    "En vivo": "📺", "Lab": "📊", "Chat": "💬", "Config": "⚙️",
 }
 
 
@@ -1251,6 +1364,8 @@ def _vista_movil() -> None:
     if not st.session_state.get("registros"):
         if seccion == "Config":
             _movil_config(reuniones)
+        elif seccion == "USA":
+            _movil_usa()
         else:
             _html(ui.hero(
                 "Sistema Hípico", "Análisis Estadístico de Caballos",
@@ -1261,6 +1376,8 @@ def _vista_movil() -> None:
         _tab_domingo()
     elif seccion == "Config":
         _movil_config(reuniones)
+    elif seccion == "USA":
+        _movil_usa()
     elif seccion == "Carrera":
         _movil_carrera(umbral)
     elif seccion == "En vivo":
@@ -1271,6 +1388,20 @@ def _vista_movil() -> None:
         _tab_chat()
     else:
         _movil_resumen(umbral)
+
+
+def _movil_usa() -> None:
+    """Sección USA del móvil: selector de hipódromo Equibase."""
+    st.markdown("### Hipódromos de EE.UU.")
+    _panel_usa("movil")
+    if st.session_state.get("registros") and st.session_state["meta"].get(
+        "usa_reunion"
+    ):
+        meta = st.session_state["meta"]
+        st.success(
+            f"Tarjeta cargada: {meta['track']} · {meta['date']:%d/%m/%Y}. "
+            "Abre ☰ y entra a Resumen, Domingo o Carrera para ver el análisis."
+        )
 
 
 def _movil_config(reuniones: list[dict]) -> None:
@@ -1491,8 +1622,9 @@ def main() -> None:
 
     _selector_gaceta(offline)
 
-    tab_domingo, tab_reunion, tab_carrera, tab_vivo, tab_lab, tab_chat = st.tabs(
-        ["Domingo", "Reunión", "Carrera", "En vivo", "Laboratorio", "Chat IA"]
+    tab_domingo, tab_reunion, tab_carrera, tab_vivo, tab_usa, tab_lab, tab_chat = st.tabs(
+        ["Domingo", "Reunión", "Carrera", "En vivo", "EE.UU.",
+         "Laboratorio", "Chat IA"]
     )
     try:
         if st.session_state.get("registros"):
@@ -1514,6 +1646,8 @@ def main() -> None:
                 st.info("Carga una reunión para ver el análisis por carrera.")
         with tab_vivo:
             _tab_en_vivo()
+        with tab_usa:
+            _tab_usa()
         with tab_lab:
             _tab_laboratorio()
         with tab_chat:

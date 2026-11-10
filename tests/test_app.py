@@ -26,7 +26,8 @@ def test_app_arranca_sin_excepciones():
     at = _app().run()
     assert not at.exception
     assert [t.label for t in at.tabs] == [
-        "Domingo", "Reunión", "Carrera", "En vivo", "Laboratorio", "Chat IA"
+        "Domingo", "Reunión", "Carrera", "En vivo", "EE.UU.",
+        "Laboratorio", "Chat IA"
     ]
     assert any(m.label == "Al azar · 1er pick" for m in at.metric)
     assert at.date_input[0].label == "Semana"
@@ -86,7 +87,8 @@ def test_app_movil_resumen_y_carrera():
     at.button(key="m_hamb_btn").click().run()
     nav = {b.key: b for b in at.button if (b.key or "").startswith("m_nav_")}
     assert set(nav) == {f"m_nav_{s}" for s in (
-        "Resumen", "Domingo", "Carrera", "En vivo", "Lab", "Chat", "Config")}
+        "Resumen", "Domingo", "Carrera", "USA", "En vivo", "Lab", "Chat",
+        "Config")}
     # Lista de carreras como botones grandes.
     assert any(b.label.startswith("C1") for b in at.button)
     # Entrar a la sección Carrera desde el resumen.
