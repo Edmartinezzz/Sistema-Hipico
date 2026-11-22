@@ -109,49 +109,59 @@
    "Nuevo top3": 6,
    "Actual 1er": 5,
    "Actual top3": 8
+  },
+  {
+   "Fecha": "2026-11-21",
+   "Hipódromo": "NACIONAL DE VALENCIA",
+   "Reunión": 29,
+   "Carreras": 6,
+   "Nuevo 1er": 3,
+   "Nuevo top3": 4,
+   "Actual 1er": 0,
+   "Actual top3": 4
   }
  ],
  "totales": {
-  "carreras": 106.0,
-  "nuevo_1": 35.0,
-  "nuevo_3": 66.0,
-  "nuevo_ll": 201.78972810225088,
+  "carreras": 112.0,
+  "nuevo_1": 38.0,
+  "nuevo_3": 70.0,
+  "nuevo_ll": 211.21623906322677,
   "actual_1": 31.0,
-  "actual_3": 69.0,
-  "actual_ll": 202.03617105861343,
-  "azar_1": 13.512071262071249,
-  "azar_3": 40.53621378621379
+  "actual_3": 73.0,
+  "actual_ll": 212.8963379647227,
+  "azar_1": 14.25492840492839,
+  "azar_3": 42.76478521478522
  },
  "calibracion": [
   {
    "Tramo": "0%–5%",
-   "Prob. modelo": 0.028663048503743432,
-   "Ganó de verdad": 0.056338028169014086,
-   "Caballos": 213
+   "Prob. modelo": 0.028690132663220926,
+   "Ganó de verdad": 0.05333333333333334,
+   "Caballos": 225
   },
   {
    "Tramo": "5%–10%",
-   "Prob. modelo": 0.07322013204792002,
-   "Ganó de verdad": 0.053497942386831275,
-   "Caballos": 243
+   "Prob. modelo": 0.0729958145987192,
+   "Ganó de verdad": 0.05426356589147287,
+   "Caballos": 258
   },
   {
    "Tramo": "10%–20%",
-   "Prob. modelo": 0.13865605313690865,
-   "Ganó de verdad": 0.14925373134328357,
-   "Caballos": 268
+   "Prob. modelo": 0.13877051302234503,
+   "Ganó de verdad": 0.14695340501792115,
+   "Caballos": 279
   },
   {
    "Tramo": "20%–30%",
-   "Prob. modelo": 0.24296623418327534,
-   "Ganó de verdad": 0.2,
-   "Caballos": 95
+   "Prob. modelo": 0.24326394831244033,
+   "Ganó de verdad": 0.20388349514563106,
+   "Caballos": 103
   },
   {
    "Tramo": "30%–45%",
-   "Prob. modelo": 0.3607729721074403,
-   "Ganó de verdad": 0.38636363636363635,
-   "Caballos": 44
+   "Prob. modelo": 0.3606805713757889,
+   "Ganó de verdad": 0.40425531914893614,
+   "Caballos": 47
   },
   {
    "Tramo": "45%–100%",
@@ -161,20 +171,20 @@
   }
  ],
  "pesos_ultimo": {
-  "forma": 0.4892025828297838,
-  "tiempo": 0.33615422282366414,
-  "llegada": 0.04860859272404127,
-  "jinete": 0.21462507519331944,
-  "entrenador": -0.07358052832626236,
-  "distancia": 0.04546747095504563,
-  "descanso": -0.029055260265398754,
-  "debut": -0.08754066965581339,
-  "kilos": 0.07401369858422382,
-  "puesto": -0.009991181156671016
+  "forma": 0.4972182998775906,
+  "tiempo": 0.30697979842259837,
+  "llegada": 0.03148570750118854,
+  "jinete": 0.2111547861293097,
+  "entrenador": -0.03689005696006395,
+  "distancia": 0.05911582644428473,
+  "descanso": -0.035808949201266066,
+  "debut": -0.08623906810645608,
+  "kilos": 0.04035865202598341,
+  "puesto": -0.025150385160463223
  },
- "n_reuniones": 14,
+ "n_reuniones": 15,
  "rango": [
   "2026-09-26",
-  "2026-11-15"
+  "2026-11-21"
  ]
 }
