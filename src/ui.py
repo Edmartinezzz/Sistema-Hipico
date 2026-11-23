@@ -140,6 +140,28 @@ div[data-testid="stChatMessage"] {animation: entrada .3s ease both;}
   text-overflow: ellipsis;}
 .an-vez {font-size: .62rem; color: var(--muted);}
 .an-prob {font-size: .72rem; font-weight: 700; color: var(--azul2);}
+/* Sorteos de hoy: rejilla de tarjetas, marca si estaba recomendado. */
+.an-hoy {display: grid; grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr));
+  gap: .45rem; margin: .4rem 0 .9rem;}
+.an-hoy .an-item {min-width: 0; position: relative;}
+.an-hoy .an-item.ok {border-color: var(--azul); background: rgba(59,157,255,.14);}
+.an-hoy .an-item.ok-hora {border-color: var(--azul2);
+  box-shadow: 0 0 14px rgba(124,196,255,.35);}
+.an-hora {font-size: .62rem; color: var(--muted); font-weight: 700;}
+.an-marca {font-size: .58rem; font-weight: 800; color: var(--azul2);
+  letter-spacing: .03em; min-height: .8rem;}
+.an-hoy .an-item.pend {opacity: .45; border-style: dashed;}
+/* Pronóstico por hora: una fila por sorteo con sus 3 animalitos. */
+.an-horas {display: flex; flex-direction: column; gap: .3rem; margin: .4rem 0 .9rem;}
+.an-fila {display: flex; align-items: center; gap: .5rem; background: var(--panel);
+  border: 1px solid var(--borde); border-radius: .7rem; padding: .3rem .6rem;}
+.an-fila .an-hora {width: 4.2rem; flex-shrink: 0; font-size: .75rem; color: var(--texto);}
+.an-mini {display: flex; align-items: center; gap: .3rem; flex: 1 1 0; min-width: 0;
+  font-size: .72rem;}
+.an-mini .an-img {width: 1.6rem; height: 1.6rem; margin: 0; flex-shrink: 0;}
+.an-mini .an-num {font-size: .7rem;}
+.an-mini span {white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.an-mini b {color: var(--azul2); font-weight: 700;}
 /* Tarjeta de caballo + botón "Ficha" en la misma fila. Solo la fila interna
    (la que no contiene otras columnas), no la de tarjetas + gráfico. */
 div[data-testid="stHorizontalBlock"]:has(.horse-card):not(:has(div[data-testid="stHorizontalBlock"])) {
@@ -319,21 +341,64 @@ def tira_animalitos(items: list[dict[str, Any]]) -> str:
     """
     celdas = ""
     for i, f in enumerate(items):
-        img = f.get("imagen")
-        figura = (
-            f'<img class="an-img" src="{escape(str(img))}" '
-            f'alt="{escape(str(f["nombre"]))}" loading="lazy"/>'
-            if img
-            else f'<div class="an-img an-num">{escape(str(f["numero"]))}</div>'
-        )
         veces = f"{f['veces']}x de {f['sorteos']}" if f.get("sorteos") else "—"
         celdas += (
-            f'<div class="an-item{" top" if i == 0 else ""}">{figura}'
+            f'<div class="an-item{" top" if i == 0 else ""}">{_figura_animal(f)}'
             f'<div class="an-nom">{escape(str(f["numero"]))} {escape(str(f["nombre"]))}</div>'
             f'<div class="an-vez">{escape(veces)}</div>'
             f'<div class="an-prob">{pct(f.get("prob"))}</div></div>'
         )
     return f'<div class="an-tira">{celdas}</div>'
+
+
+def _figura_animal(f: dict[str, Any]) -> str:
+    img = f.get("imagen")
+    if img:
+        return (
+            f'<img class="an-img" src="{escape(str(img))}" '
+            f'alt="{escape(str(f["nombre"]))}" loading="lazy"/>'
+        )
+    return f'<div class="an-img an-num">{escape(str(f["numero"]))}</div>'
+
+
+def resultados_hoy(filas: list[dict[str, Any]], pendientes: list[str] | None = None) -> str:
+    """Sorteos de hoy (filas de ``animalitos.aciertos``) + horas pendientes.
+
+    Se resalta el animalito que estaba en el top del día (``ok``) y más
+    aún si estaba en el top de su hora (``ok-hora``).
+    """
+    celdas = ""
+    for f in filas:
+        clase = " ok-hora" if f.get("en_top_hora") else (" ok" if f.get("en_top_dia") else "")
+        marca = "TOP HORA" if f.get("en_top_hora") else ("TOP DÍA" if f.get("en_top_dia") else "")
+        celdas += (
+            f'<div class="an-item{clase}"><div class="an-hora">{escape(str(f.get("hora") or ""))}</div>'
+            f"{_figura_animal(f)}"
+            f'<div class="an-nom">{escape(str(f["numero"]))} {escape(str(f["nombre"]))}</div>'
+            f'<div class="an-marca">{marca}</div></div>'
+        )
+    for hora in pendientes or []:
+        celdas += (
+            f'<div class="an-item pend"><div class="an-hora">{escape(hora)}</div>'
+            '<div class="an-img an-num">?</div><div class="an-nom">Pendiente</div>'
+            '<div class="an-marca"></div></div>'
+        )
+    return f'<div class="an-hoy">{celdas}</div>'
+
+
+def pronostico_horas(horas: list[dict[str, Any]], mapa: dict[str, dict[str, str]]) -> str:
+    """Filas de ``animalitos.pronostico_horas``: hora + sus animalitos top."""
+    filas = ""
+    for h in horas:
+        minis = "".join(
+            '<div class="an-mini">'
+            + _figura_animal({**f, "imagen": (mapa.get(f["numero"]) or {}).get("imagen")})
+            + f'<span>{escape(str(f["numero"]))} {escape(str(f["nombre"]))} '
+            f'<b>{f["veces"]}/{f["sorteos"]}</b></span></div>'
+            for f in h["top"]
+        ) or '<div class="an-mini"><span>Sin datos</span></div>'
+        filas += f'<div class="an-fila"><div class="an-hora">{escape(h["hora"])}</div>{minis}</div>'
+    return f'<div class="an-horas">{filas}</div>'
 
 
 def barra_superior(titulo: str, subtitulo: str) -> str:
