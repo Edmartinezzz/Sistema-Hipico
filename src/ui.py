@@ -370,7 +370,7 @@ def resultados_hoy(filas: list[dict[str, Any]], pendientes: list[str] | None = N
     celdas = ""
     for f in filas:
         clase = " ok-hora" if f.get("en_top_hora") else (" ok" if f.get("en_top_dia") else "")
-        marca = "TOP HORA" if f.get("en_top_hora") else ("TOP 7" if f.get("en_top_dia") else "")
+        marca = "TOP HORA" if f.get("en_top_hora") else ("TOP DÍA" if f.get("en_top_dia") else "")
         celdas += (
             f'<div class="an-item{clase}"><div class="an-hora">{escape(str(f.get("hora") or ""))}</div>'
             f"{_figura_animal(f)}"

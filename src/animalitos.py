@@ -54,6 +54,8 @@ DIAS_ARCHIVO = 182
 DIAS_ARCHIVO_MAX = 400
 # Un día vacío reciente puede ser un fallo pasajero: no se archiva.
 DIAS_GRACIA_VACIO = 3
+# Cuántos animalitos se recomiendan para un día de la semana.
+TOP_DIA = 6
 # La fuente usa estos textos cuando no conoce el nombre del animalito.
 NOMBRES_GENERICOS = {"", "-", "resultado", "pendiente", "sin nombre"}
 
@@ -125,7 +127,7 @@ def parse_dia(html: str, slug: str, fecha: date) -> list[dict[str, Any]]:
         hora_el = tarjeta.select_one(".card-time")
         if not numero_el or not nombre_el:
             continue
-        numero = numero_el.get_text(strip=True)
+        numero = normalizar_numero(numero_el.get_text(strip=True))
         nombre = nombre_el.get_text(strip=True)
         if not numero:
             continue
@@ -156,14 +158,27 @@ def parse_dia(html: str, slug: str, fecha: date) -> list[dict[str, Any]]:
     return sorteos
 
 
+def normalizar_numero(numero: Any) -> str:
+    """``"08"`` → ``"8"`` (la fuente cambió de formato a mitad de año).
+
+    ``"0"`` y ``"00"`` son animalitos distintos (Delfín y Ballena) y se
+    conservan tal cual.
+    """
+    texto = str(numero).strip()
+    if texto.isdigit() and len(texto) > 1 and texto.strip("0"):
+        return str(int(texto))
+    return texto
+
+
 def _generico(nombre: str | None) -> bool:
     """``True`` si el nombre es un relleno (``N.º 96``) y no el animal."""
     return not nombre or nombre.startswith("N.º ")
 
 
 def _limpiar(sorteos: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Normaliza nombres genéricos de cachés guardadas antes del arreglo."""
+    """Normaliza números y nombres genéricos de cachés/archivos antiguos."""
     for s in sorteos:
+        s["numero"] = normalizar_numero(s["numero"])
         if (s.get("nombre") or "").lower() in NOMBRES_GENERICOS:
             s["nombre"] = f"N.º {s['numero']}"
     return sorteos
@@ -248,7 +263,7 @@ def leer_archivo(
 ) -> dict[str, list[dict[str, Any]]]:
     """Días archivados de una lotería: ``{"AAAA-MM-DD": [sorteos]}``."""
     return {
-        f: _expandir(slug, date.fromisoformat(f), filas)
+        f: _limpiar(_expandir(slug, date.fromisoformat(f), filas))
         for f, filas in _leer_archivo_crudo(slug, archivo_dir).items()
     }
 
@@ -365,7 +380,10 @@ def mapa_animales(
     mapa: dict[str, dict[str, str]] = {}
     if ruta.exists():
         try:
-            mapa = json.loads(ruta.read_text(encoding="utf-8"))
+            mapa = {
+                normalizar_numero(k): v
+                for k, v in json.loads(ruta.read_text(encoding="utf-8")).items()
+            }
         except json.JSONDecodeError:
             mapa = {}
 
@@ -585,6 +603,50 @@ def aciertos(
         "dia": sum(f["en_top_dia"] for f in filas),
         "hora": sum(f["en_top_hora"] for f in filas),
         "esperado": n * len(top_dia) / n_animales if n_animales else 0.0,
+    }
+
+
+def efectividad_dia(
+    sorteos: list[dict[str, Any]], top: int = TOP_DIA, min_dias: int = 56
+) -> dict[str, Any]:
+    """Evaluación honesta del top por día de semana (*walk-forward*).
+
+    Para cada fecha con al menos ``min_dias`` días previos de historia se
+    arma el top ``top`` de ``tabla_dia`` usando SOLO días anteriores y se
+    cuenta cuántos sorteos de esa fecha cayeron en él. ``azar`` es lo que
+    acertaría elegir ``top`` animalitos al azar (``top / N``).
+    """
+    por_fecha: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for s in sorteos:
+        por_fecha[s["fecha"]].append(s)
+    conteo: dict[int, Counter] = defaultdict(Counter)
+    dias_vistos: dict[int, dict[str, set]] = defaultdict(lambda: defaultdict(set))
+    numeros: set[str] = set()
+    evaluados = total = aciertos = 0
+    for i, fecha in enumerate(sorted(por_fecha)):
+        dia = date.fromisoformat(fecha).weekday()
+        del_dia = por_fecha[fecha]
+        if i >= min_dias and numeros:
+            elegidos = set(
+                sorted(
+                    numeros,
+                    key=lambda n: (-conteo[dia][n], -len(dias_vistos[dia][n]), n),
+                )[:top]
+            )
+            evaluados += 1
+            total += len(del_dia)
+            aciertos += sum(s["numero"] in elegidos for s in del_dia)
+        for s in del_dia:
+            numeros.add(s["numero"])
+            conteo[dia][s["numero"]] += 1
+            dias_vistos[dia][s["numero"]].add(fecha)
+    n = len(numeros)
+    return {
+        "dias": evaluados,
+        "sorteos": total,
+        "aciertos": aciertos,
+        "tasa": aciertos / total if total else None,
+        "azar": min(top, n) / n if n else None,
     }
 
 

@@ -53,7 +53,7 @@ def test_parse_dia_extrae_campos():
     )
     sorteos = an.parse_dia(html, "lotto-activo", fecha)
     assert len(sorteos) == 3
-    assert sorteos[0]["numero"] == "05"
+    assert sorteos[0]["numero"] == "5"  # "05" se normaliza
     assert sorteos[0]["nombre"] == "León"
     assert sorteos[0]["dia_semana"] == "Lunes"
     assert sorteos[0]["hora24"] == 9
@@ -165,7 +165,7 @@ def test_mapa_animales_guarda_y_completa(tmp_path, monkeypatch):
     s["imagen"] = "https://img.test/leon.webp"
     monkeypatch.setattr(an, "rate_limited_get", lambda u: _Resp(404))
     mapa = an.mapa_animales("lotto-activo", [s], tmp_path)
-    assert mapa["05"] == {"nombre": "León", "imagen": "https://img.test/leon.webp"}
+    assert mapa["5"] == {"nombre": "León", "imagen": "https://img.test/leon.webp"}
     # Persiste en disco aunque la siguiente llamada no traiga imagen.
     s2 = _sorteo(fecha, "07", "Perico")
     monkeypatch.setattr(
@@ -173,10 +173,10 @@ def test_mapa_animales_guarda_y_completa(tmp_path, monkeypatch):
         lambda u: _pagina([("09:00 AM", "05", "León", "09/11/2026")]),
     )
     mapa = an.mapa_animales("lotto-activo", [s2], tmp_path)
-    assert mapa["05"]["imagen"].endswith("_1.webp")  # la fuente real gana
-    assert mapa["07"]["nombre"] == "Perico"
-    assert not mapa["07"].get("imagen")
-    assert mapa["07"]["sin_img"]  # la URL construida dio 404: no reintentar
+    assert mapa["5"]["imagen"].endswith("_1.webp")  # la fuente real gana
+    assert mapa["7"]["nombre"] == "Perico"
+    assert not mapa["7"].get("imagen")
+    assert mapa["7"]["sin_img"]  # la URL construida dio 404: no reintentar
 
 
 def test_mapa_animales_siembra_si_no_hay_imagenes(tmp_path, monkeypatch):
@@ -186,9 +186,9 @@ def test_mapa_animales_siembra_si_no_hay_imagenes(tmp_path, monkeypatch):
     monkeypatch.setattr(an, "_get_html", lambda u: html)
     monkeypatch.setattr(an, "rate_limited_get", lambda u: _Resp(200))
     mapa = an.mapa_animales("lotto-activo", [_sorteo(fecha, "07", "Perico")], tmp_path)
-    assert mapa["05"]["imagen"].endswith("León_1.webp")
+    assert mapa["5"]["imagen"].endswith("León_1.webp")
     # Perico no salió en la página: su dibujo se resolvió por URL patrón.
-    assert "Perico_1.webp" in mapa["07"]["imagen"]
+    assert "Perico_1.webp" in mapa["7"]["imagen"]
 
 
 def test_tira_animalitos_con_y_sin_imagen():
@@ -330,7 +330,7 @@ def test_ui_resultados_hoy_y_pronostico_horas():
     ]
     html = ui.resultados_hoy(filas, ["11:00 AM"])
     assert "an-item ok-hora" in html and "TOP HORA" in html
-    assert "an-item ok" in html and "TOP 7" in html
+    assert "an-item ok" in html and "TOP DÍA" in html
     assert "&lt;b&gt;" in html  # texto escapado
     assert "an-item pend" in html and "11:00 AM" in html
 
@@ -340,3 +340,31 @@ def test_ui_resultados_hoy_y_pronostico_horas():
     html = ui.pronostico_horas(horas, {"05": {"imagen": "https://img.test/l.webp"}})
     assert 'src="https://img.test/l.webp"' in html and "<b>2/4</b>" in html
     assert "Sin datos" in html
+
+
+def test_normalizar_numero_unifica_formatos():
+    # La fuente pasó de "08" a "8" a mitad de año; 0 y 00 son distintos.
+    assert [an.normalizar_numero(x) for x in ["08", "8", "0", "00", "10", " 36 "]] == [
+        "8", "8", "0", "00", "10", "36",
+    ]
+    html = _pagina([("09:00 AM", "08", "Ratón", ""), ("10:00 AM", "00", "Ballena", "")])
+    s = an.parse_dia(html, "la-granjita", date(2026, 6, 1))
+    assert [x["numero"] for x in s] == ["8", "00"]
+    viejo = [_sorteo(date(2026, 6, 1), "8", "Ratón") | {"numero": "08"},
+             _sorteo(date(2026, 8, 3), "8", "Ratón")]
+    assert an.tabla_dia(an._limpiar(viejo), 0)[0]["veces"] == 2
+
+
+def test_efectividad_dia_walk_forward():
+    # Cada lunes sale el 05 y los demás días el 07: el top-1 del lunes
+    # acierta todos los lunes evaluados y nunca usa el día que predice.
+    inicio = date(2026, 6, 1)  # lunes
+    sorteos = []
+    for i in range(28):
+        f = inicio + timedelta(days=i)
+        sorteos.append(_sorteo(f, "05" if f.weekday() == 0 else "07", "X"))
+    ef = an.efectividad_dia(sorteos, top=1, min_dias=14)
+    assert ef["dias"] == 14 and ef["sorteos"] == 14
+    assert ef["aciertos"] == 14 and ef["tasa"] == 1.0
+    assert ef["azar"] == pytest.approx(0.5)
+    assert an.efectividad_dia(sorteos, min_dias=100)["tasa"] is None

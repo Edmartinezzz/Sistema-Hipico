@@ -1049,7 +1049,7 @@ def _panel_hoy(slug: str, previos: list[dict], sorteos_hoy: list[dict], mapa: di
     que la comparación sea honesta.
     """
     dia = animalitos.hoy_ve().weekday()
-    top_dia = [f["numero"] for f in animalitos.tabla_dia(previos, dia) if f["veces"]][:7]
+    top_dia = [f["numero"] for f in animalitos.tabla_dia(previos, dia) if f["veces"]][:animalitos.TOP_DIA]
     top_hora = {
         h["hora"]: [f["numero"] for f in h["top"]]
         for h in animalitos.pronostico_horas(previos, dia)
@@ -1076,7 +1076,7 @@ def _panel_hoy(slug: str, previos: list[dict], sorteos_hoy: list[dict], mapa: di
     _html(ui.resultados_hoy(res["filas"], pendientes))
     if res["sorteos"]:
         st.caption(
-            f"De {res['sorteos']} sorteos, {res['dia']} salieron del top 7 del día "
+            f"De {res['sorteos']} sorteos, {res['dia']} salieron del top {len(top_dia)} del día "
             f"(el azar daría ~{res['esperado']:.1f}) y {res['hora']} del top 3 de su "
             "hora. Se actualiza cada 15 min o con «Refrescar»."
         )
@@ -1154,10 +1154,21 @@ def _tab_animalitos() -> None:
     dia_plural = nombre_dia.lower()
     if not dia_plural.endswith("s"):
         dia_plural += "s"
-    st.markdown(f"**Los 7 más probables para el {dia_plural}**")
+    top = animalitos.TOP_DIA
+    st.markdown(f"**Los {top} que más han salido los {dia_plural}**")
     for f in tabla:
         f["imagen"] = (mapa.get(f["numero"]) or {}).get("imagen")
-    _html(ui.tira_animalitos(tabla[:7]))
+    _html(ui.tira_animalitos(tabla[:top]))
+    ef = animalitos.efectividad_dia(previos, top)
+    if ef["tasa"] is not None:
+        st.caption(
+            f"Se basa en cuántas veces salió cada animalito un {nombre_dia.lower()} "
+            f"en las últimas {semanas} semanas. **Prueba honesta** de este método "
+            f"(cada día elegido solo con días anteriores, {ef['dias']} días): en el "
+            f"**{ef['tasa']:.1%}** de los sorteos salió uno de los {top}; elegir {top} "
+            f"al azar da **{ef['azar']:.1%}**. Si no supera al azar, el sorteo no "
+            "tiene memoria: úsalo como guía, no como garantía."
+        )
 
     with st.expander(f"Pronóstico por hora · {dia_plural}", expanded=True):
         _html(ui.pronostico_horas(animalitos.pronostico_horas(sorteos, dia), mapa))
