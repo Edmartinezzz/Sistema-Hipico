@@ -245,6 +245,17 @@ def parse_race_page(html: str, race_number: int) -> dict[str, Any]:
     morning_line, scratched}]}``. Los inscritos retirados se marcan
     con ``scratched=True`` pero no se excluyen aquí.
     """
+    # Las columnas de la tabla varían según el tipo de carrera: las
+    # claiming llevan una columna de precio que las demás no tienen, así
+    # que cada campo se busca por su encabezado, nunca por posición.
+    _CABECERAS = {
+        "p#": "program", "pp": "post", "horse": "horse", "a/s": "edad_sexo",
+        "med": "medication", "clm": "claiming", "clm price": "claiming",
+        "claim $": "claiming", "clm $": "claiming", "claim price": "claiming",
+        "claiming price": "claiming", "jockey": "jockey", "wgt": "weight",
+        "weight": "weight", "trainer": "trainer", "m/l": "morning_line",
+        "ml": "morning_line", "live odds": "live_odds", "odds": "live_odds",
+    }
     info_match = re.search(
         r'<div class="race-info">(.*?)(?:<div class="entries-race-conditions">|'
         r"<table)",
@@ -268,29 +279,46 @@ def parse_race_page(html: str, race_number: int) -> dict[str, Any]:
         raise HipodromosUsaError(
             f"La carrera {race_number} no contiene la tabla de inscritos"
         )
+    filas = _ROW_RE.findall(tabla_match.group(1))
+    encabezados = [_texto(c).lower() for c in _CELL_RE.findall(filas[0])]
+    columnas = {
+        _CABECERAS[e]: i for i, e in enumerate(encabezados) if e in _CABECERAS
+    }
+    # Respaldo con la posición fija (solo si el encabezado no se leyó).
+    if not columnas:
+        columnas = {
+            "program": 0, "post": 1, "horse": 2, "edad_sexo": 4,
+            "medication": 5, "claiming": 6, "jockey": 7, "weight": 8,
+            "trainer": 9, "morning_line": 10,
+        }
+
+    def col(celdas: list[str], nombre: str) -> str:
+        i = columnas.get(nombre)
+        return celdas[i] if i is not None and i < len(celdas) else ""
+
     inscritos = []
-    for fila in _ROW_RE.findall(tabla_match.group(1))[1:]:
+    for fila in filas[1:]:
         retirado = "scratch" in fila.lower()
         celdas = _CELL_RE.findall(fila)
         if len(celdas) < 10:
             continue
         dorsal = _SADDLE_RE.search(celdas[0])
-        caballo_match = _HORSE_LINK_RE.search(celdas[2])
+        caballo_match = _HORSE_LINK_RE.search(col(celdas, "horse"))
         nombre = _texto(caballo_match.group(2)) if caballo_match else _texto(
-            celdas[2]
+            col(celdas, "horse")
         )
         if not nombre:
             continue
         origen = re.search(r"\(([A-Z]{2,4})\)\s*$", nombre)
-        edad, sexo = _edad_sexo(_texto(celdas[4]))
-        jockey_link = _PERSON_LINK_RE.search(celdas[7])
-        trainer_link = _PERSON_LINK_RE.search(celdas[9])
+        edad, sexo = _edad_sexo(_texto(col(celdas, "edad_sexo")))
+        jockey_link = _PERSON_LINK_RE.search(col(celdas, "jockey"))
+        trainer_link = _PERSON_LINK_RE.search(col(celdas, "trainer"))
         inscritos.append(
             {
                 "program": _entero(dorsal.group(1)) if dorsal else _entero(
                     _texto(celdas[0])
                 ),
-                "post_position": _entero(_texto(celdas[1])),
+                "post_position": _entero(_texto(col(celdas, "post"))),
                 "horse_name": nombre,
                 "bred": origen.group(1) if origen else None,
                 "pedigree": (
@@ -298,20 +326,21 @@ def parse_race_page(html: str, race_number: int) -> dict[str, Any]:
                 ),
                 "age": edad,
                 "sex": sexo,
-                "medication": _texto(celdas[5]) or None,
-                "claiming_price": _numero(_texto(celdas[6])),
+                "medication": _texto(col(celdas, "medication")) or None,
+                "claiming_price": _numero(_texto(col(celdas, "claiming"))),
                 "jockey": (
                     re.sub(r"\s+", " ", jockey_link.group(1)).strip()
                     if jockey_link
-                    else _texto(celdas[7]) or None
+                    else _texto(col(celdas, "jockey")) or None
                 ),
-                "weight": _numero(_texto(celdas[8])),
+                "weight": _numero(_texto(col(celdas, "weight"))),
                 "trainer": (
                     re.sub(r"\s+", " ", trainer_link.group(1)).strip()
                     if trainer_link
-                    else _texto(celdas[9]) or None
+                    else _texto(col(celdas, "trainer")) or None
                 ),
-                "morning_line": _texto(celdas[10]) or None,
+                "morning_line": _texto(col(celdas, "morning_line")) or None,
+                "live_odds": _texto(col(celdas, "live_odds")) or None,
                 "scratched": retirado,
             }
         )
@@ -507,8 +536,10 @@ def meeting_to_records(datos: dict[str, Any]) -> list[dict[str, Any]]:
     registros = []
     for carrera in datos["races"]:
         activos = [e for e in carrera.get("entries", []) if not e.get("scratched")]
+        # La cuota en vivo (si ya abrieron las apuestas) es más real que la M/L.
         cuotas = [
-            fractional_to_decimal(e.get("morning_line") or "")
+            fractional_to_decimal(e.get("live_odds") or "")
+            or fractional_to_decimal(e.get("morning_line") or "")
             for e in activos
         ]
         cuota_min = min((c for c in cuotas if c), default=None)
@@ -527,6 +558,7 @@ def meeting_to_records(datos: dict[str, Any]) -> list[dict[str, Any]]:
                     "post_position": inscrito.get("post_position"),
                     "record": None,
                     "morning_line": inscrito.get("morning_line"),
+                    "live_odds": inscrito.get("live_odds"),
                     "morning_line_favorite": bool(
                         cuota is not None and cuota == cuota_min
                     ),
