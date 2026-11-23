@@ -6,12 +6,25 @@ Se inyectan reuniones sintéticas en la sesión para no usar la red.
 from datetime import date
 from pathlib import Path
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
+from src import animalitos
 from src.gaceta_web import meeting_to_records, parse_meetings
 from tests.test_gaceta_web import LISTA_HTML, REUNION
 
 APP = str(Path(__file__).resolve().parent.parent / "src" / "app.py")
+
+
+@pytest.fixture(autouse=True)
+def _animalitos_sin_red(monkeypatch):
+    """La sección Animalitos carga sola (archivo + hoy): sin red en tests."""
+
+    def _sin_red(*_a, **_k):
+        raise animalitos.AnimalitosError("sin red en tests")
+
+    monkeypatch.setattr(animalitos, "_get_html", _sin_red)
+    monkeypatch.setattr(animalitos, "rate_limited_get", _sin_red)
 
 
 def _app() -> AppTest:

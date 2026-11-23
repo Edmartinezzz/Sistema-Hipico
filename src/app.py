@@ -1022,6 +1022,56 @@ def _tab_usa() -> None:
 # -------------------------------------------------------------- animalitos
 
 
+def _sorteos_hoy(slug: str) -> list[dict]:
+    """Sorteos de hoy (caché de 15 min); ``[]`` y aviso si la fuente falla."""
+    forzar = st.session_state.pop("an_hoy_forzar", False)
+    try:
+        return animalitos.sorteos_dia(slug, animalitos.hoy_ve(), usar_cache=not forzar)
+    except animalitos.AnimalitosError as exc:
+        st.warning(f"No se pudieron leer los sorteos de hoy: {exc}")
+        return animalitos.sorteos_dia(slug, animalitos.hoy_ve(), red=False)
+
+
+def _panel_hoy(slug: str, previos: list[dict], sorteos_hoy: list[dict], mapa: dict) -> None:
+    """Sorteos de hoy en vivo y si salió alguno de los recomendados.
+
+    Las recomendaciones se calculan solo con días anteriores a hoy, para
+    que la comparación sea honesta.
+    """
+    dia = animalitos.hoy_ve().weekday()
+    top_dia = [f["numero"] for f in animalitos.tabla_dia(previos, dia) if f["veces"]][:7]
+    top_hora = {
+        h["hora"]: [f["numero"] for f in h["top"]]
+        for h in animalitos.pronostico_horas(previos, dia)
+    }
+    res = animalitos.aciertos(
+        sorteos_hoy, top_dia, top_hora, len(animalitos.animales(previos))
+    )
+    for f in res["filas"]:
+        f["imagen"] = f.get("imagen") or (mapa.get(f["numero"]) or {}).get("imagen")
+    salidas = {f.get("hora") for f in res["filas"]}
+    pendientes = [h for h in top_hora if h not in salidas]
+
+    t1, t2 = st.columns([4, 1])
+    t1.markdown(
+        f'<span class="live-dot"></span>**Hoy en vivo** · {ui.fecha_larga(animalitos.hoy_ve())}',
+        unsafe_allow_html=True,
+    )
+    if t2.button("↻ Refrescar", key="an_hoy_btn", width="stretch"):
+        st.session_state["an_hoy_forzar"] = True
+        st.rerun()
+    if not res["filas"] and not pendientes:
+        st.caption("Todavía no hay sorteos hoy en esta lotería.")
+        return
+    _html(ui.resultados_hoy(res["filas"], pendientes))
+    if res["sorteos"]:
+        st.caption(
+            f"De {res['sorteos']} sorteos, {res['dia']} salieron del top 7 del día "
+            f"(el azar daría ~{res['esperado']:.1f}) y {res['hora']} del top 3 de su "
+            "hora. Se actualiza cada 15 min o con «Refrescar»."
+        )
+
+
 def _tab_animalitos() -> None:
     """Animalitos: historial real de sorteos y estadísticas por día."""
     st.markdown("### Animalitos de Venezuela")
@@ -1036,32 +1086,37 @@ def _tab_animalitos() -> None:
         format_func=lambda s: animalitos.LOTERIAS[s], key="an_lot",
     )
     semanas = c2.selectbox(
-        "Historial", [4, 8, 12, 20], index=1,
+        "Historial", [4, 8, 12, 26], index=3,
         format_func=lambda s: f"{s} semanas", key="an_sem",
     )
-    if c3.button("Cargar historial", key="an_cargar", width="stretch"):
-        barra = st.progress(0.0)
+    # Sin pulsar nada se carga el archivo del repositorio (sin red); el
+    # botón completa los días que falten pidiéndolos a la fuente.
+    actualizar = c3.button("Actualizar", key="an_cargar", width="stretch")
+    datos = st.session_state.get("animalitos")
+    if actualizar or not datos or (datos.get("slug"), datos.get("semanas")) != (slug, semanas):
+        barra = st.progress(0.0) if actualizar else None
         try:
             sorteos = animalitos.historial(
-                slug, semanas * 7,
-                progreso=lambda i, t: barra.progress(i / t),
+                slug, semanas * 7, red=actualizar,
+                progreso=(lambda i, t: barra.progress(i / t)) if barra else None,
             )
         except animalitos.AnimalitosError as exc:
-            barra.empty()
             st.error(str(exc))
             return
-        barra.empty()
-        if sorteos:
-            st.session_state["animalitos"] = {"slug": slug, "sorteos": sorteos}
-        else:
-            st.warning("La fuente no devolvió resultados para esas fechas.")
-            return
-    datos = st.session_state.get("animalitos")
-    if not datos or not datos.get("sorteos"):
-        st.info("Elige la lotería y pulsa «Cargar historial».")
+        finally:
+            if barra:
+                barra.empty()
+        datos = {"slug": slug, "semanas": semanas, "sorteos": sorteos}
+        st.session_state["animalitos"] = datos
+    if not datos.get("sorteos"):
+        st.info("No hay historial guardado de esta lotería: pulsa «Actualizar».")
         return
-    sorteos = datos["sorteos"]
-    nombre_lot = animalitos.LOTERIAS.get(datos["slug"], datos["slug"])
+    hoy = animalitos.hoy_ve()
+    previos = [s for s in datos["sorteos"] if s["fecha"] < hoy.isoformat()]
+    sorteos_hoy = _sorteos_hoy(slug)
+    sorteos = previos + sorteos_hoy
+    nombre_lot = animalitos.LOTERIAS.get(slug, slug)
+    mapa = animalitos.mapa_animales(slug, sorteos)
     res = animalitos.resumen(sorteos)
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Sorteos", res["sorteos"])
@@ -1069,8 +1124,10 @@ def _tab_animalitos() -> None:
     m3.metric("Animalitos", res["animales"])
     m4.metric("Periodo", f"{res['desde'][5:]}→{res['hasta'][5:]}")
 
+    _panel_hoy(slug, previos, sorteos_hoy, mapa)
+
     # Por defecto se analiza mañana: "qué sale un miércoles" si mañana lo es.
-    manana = (date.today() + timedelta(days=1)).weekday()
+    manana = (hoy + timedelta(days=1)).weekday()
     d1, d2 = st.columns(2)
     dia = d1.selectbox(
         "Día a analizar", range(7), index=manana,
@@ -1088,10 +1145,17 @@ def _tab_animalitos() -> None:
     if not dia_plural.endswith("s"):
         dia_plural += "s"
     st.markdown(f"**Los 7 más probables para el {dia_plural}**")
-    mapa = animalitos.mapa_animales(datos["slug"], sorteos)
     for f in tabla:
         f["imagen"] = (mapa.get(f["numero"]) or {}).get("imagen")
     _html(ui.tira_animalitos(tabla[:7]))
+
+    with st.expander(f"Pronóstico por hora · {dia_plural}", expanded=True):
+        _html(ui.pronostico_horas(animalitos.pronostico_horas(sorteos, dia), mapa))
+        st.caption(
+            "Los 3 que más salieron en cada sorteo ese día (veces/sorteos). "
+            "Cada hora tiene ~1 sorteo por semana: muestra pequeña, "
+            "solo orientativo."
+        )
     df = pd.DataFrame(
         [
             {
