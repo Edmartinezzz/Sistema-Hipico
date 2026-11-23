@@ -6,7 +6,9 @@ from src.analisis import (
     analizar_carrera,
     datos_forma,
     efectividad_modelo,
+    fuente_probabilidades,
     probabilidades_mercado,
+    probabilidades_modelo,
     resumen_reunion,
 )
 
@@ -125,3 +127,33 @@ def test_pronostico_carrera():
     assert all("Prob. top3" in f for f in filas)
     # Las probabilidades top-3 suman ~3.
     assert sum(f["Prob. top3"] for f in filas) == pytest.approx(3.0, abs=1e-6)
+
+
+def test_fuente_linea_si_nadie_tiene_historial():
+    # Tarjeta tipo Equibase: history vacío, sin estadística, con M/L.
+    caballos = [
+        {"horse_name": n, "history": [], "year_starts": None, "odds": o}
+        for n, o in (("A", 2.0), ("B", 4.0), ("C", 8.0))
+    ]
+
+    class _Pred:
+        def aplica(self, cs):
+            from src.modelo import Predictor
+            return Predictor.aplica(self, cs)
+
+        def probabilidades(self, cs):  # pragma: no cover - no debe usarse
+            raise AssertionError("el modelo no aplica sin historial")
+
+    assert fuente_probabilidades(caballos, _Pred()) == "linea"
+    p = probabilidades_modelo(caballos, _Pred())
+    assert sum(p) == pytest.approx(1.0)
+    assert p[0] > p[1] > p[2]  # el favorito de la M/L tiene más %
+    assert p[0] == pytest.approx((1 / 2) / (1 / 2 + 1 / 4 + 1 / 8))
+
+
+def test_fuente_sin_datos_y_forma():
+    sin = [{"horse_name": "A"}, {"horse_name": "B", "odds": 3.0}]
+    assert fuente_probabilidades(sin) == "sin_datos"
+    assert probabilidades_modelo(sin) == pytest.approx([0.5, 0.5])
+    con = [{"horse_name": "A", "year_wins": 3, "year_starts": 5}, {"horse_name": "B"}]
+    assert fuente_probabilidades(con) == "forma"

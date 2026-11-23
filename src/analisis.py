@@ -46,11 +46,52 @@ def datos_forma(registro: dict[str, Any]) -> tuple[int | None, int | None, list]
     return wins, starts, registro.get("lengths_behind") or []
 
 
-def probabilidades_modelo(caballos: list[dict[str, Any]], predictor: Any = None) -> list[float]:
-    """Probabilidad de victoria: modelo entrenado (``modelo.Predictor``) si
-    está disponible y hay datos de la gaceta web; si no, forma (Harville)."""
+def _cuotas_linea(caballos: list[dict[str, Any]]) -> list[float] | None:
+    """Cuotas de la línea de la mañana (``odds``) si TODOS la tienen."""
+    cuotas = [c.get("odds") for c in caballos]
+    if cuotas and all(isinstance(x, (int, float)) and x > 1 for x in cuotas):
+        return cuotas
+    return None
+
+
+def fuente_probabilidades(caballos: list[dict[str, Any]], predictor: Any = None) -> str:
+    """De dónde sale la probabilidad de victoria de una carrera.
+
+    - ``"modelo"``: modelo entrenado (historial de la gaceta web).
+    - ``"forma"``: Harville sobre victorias del año / cuerpos perdidos.
+    - ``"linea"``: nadie tiene historial; se usa la línea de la mañana
+      (M/L) normalizada, p. ej. tarjetas de EE.UU. o gacetas escaneadas.
+    - ``"sin_datos"``: ni historial ni cuotas: todos iguales.
+    """
     if predictor is not None and predictor.aplica(caballos):
+        return "modelo"
+    if any(form_strength(*datos_forma(c)) is not None for c in caballos):
+        return "forma"
+    if _cuotas_linea(caballos):
+        return "linea"
+    return "sin_datos"
+
+
+AVISOS_FUENTE = {
+    "linea": (
+        "Sin historial de estos caballos: el % sale de la línea de la mañana "
+        "(M/L). Como el mercado también es la M/L, no habrá value bets salvo "
+        "que escribas otras cuotas."
+    ),
+    "sin_datos": (
+        "Sin historial ni cuotas: todos tienen el mismo %. Escribe las cuotas "
+        "para diferenciarlos."
+    ),
+}
+
+
+def probabilidades_modelo(caballos: list[dict[str, Any]], predictor: Any = None) -> list[float]:
+    """Probabilidad de victoria según ``fuente_probabilidades``."""
+    fuente = fuente_probabilidades(caballos, predictor)
+    if fuente == "modelo":
         return predictor.probabilidades(caballos)
+    if fuente == "linea":
+        return probabilidades_mercado(_cuotas_linea(caballos))
     fuerzas = [form_strength(*datos_forma(c)) for c in caballos]
     return harville_win_probabilities(fill_missing_strengths(fuerzas))
 

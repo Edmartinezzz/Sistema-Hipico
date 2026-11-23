@@ -369,8 +369,10 @@ class Predictor:
         self.stats.agregar_registros(registros)
 
     def aplica(self, caballos: list[dict[str, Any]]) -> bool:
-        """El modelo necesita datos de la gaceta web (historial/estadística)."""
-        return any("history" in c or c.get("year_starts") is not None for c in caballos)
+        """El modelo necesita datos reales de la gaceta web: historial no
+        vacío o estadística del año. Una lista ``history`` vacía (p. ej.
+        tarjetas de Equibase) no cuenta: todos quedarían casi iguales."""
+        return any(c.get("history") or c.get("year_starts") is not None for c in caballos)
 
     def probabilidades(self, caballos: list[dict[str, Any]]) -> list[float]:
         x = matriz_carrera(caballos, self.stats)

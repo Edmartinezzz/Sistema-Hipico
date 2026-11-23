@@ -135,3 +135,10 @@ def test_calibracion_tramos():
     assert tabla[0]["Caballos"] == 2 and tabla[0]["Ganó de verdad"] == 0.5
     assert tabla[-1]["Tramo"] == "45%–100%"
     assert np.isclose(tabla[-1]["Prob. modelo"], 0.5)
+
+
+def test_aplica_ignora_historial_vacio():
+    from src.modelo import Predictor
+
+    assert not Predictor.aplica(None, [{"horse_name": "USA", "history": []}])
+    assert Predictor.aplica(None, [{"horse_name": "Debut", "history": [], "year_starts": 0}])

@@ -42,9 +42,11 @@ from src import (  # noqa: E402
 )
 from src.modelo import MODELO_PATH, NOMBRES, Predictor, entrenar_desde_archivo  # noqa: E402
 from src.analisis import (  # noqa: E402
+    AVISOS_FUENTE,
     agrupar_por_carrera,
     analizar_carrera,
     efectividad_modelo,
+    fuente_probabilidades,
     pronostico_carrera,
     resumen_reunion,
 )
@@ -802,6 +804,13 @@ def _editor_cuotas(numero: int, caballos: list[dict]) -> list[float | None]:
     return valores
 
 
+def _aviso_fuente(caballos: list[dict]) -> None:
+    """Explica por qué los % se parecen cuando no hay historial."""
+    aviso = AVISOS_FUENTE.get(fuente_probabilidades(caballos, _predictor()))
+    if aviso:
+        st.info(aviso)
+
+
 def _tab_carrera(umbral: float) -> None:
     carreras = agrupar_por_carrera(st.session_state["registros"])
     meta = st.session_state["meta"]
@@ -826,6 +835,7 @@ def _tab_carrera(umbral: float) -> None:
         cuotas = _editor_cuotas(numero, caballos)
     filas = analizar_carrera(caballos, cuotas, umbral, _predictor())
     por_nombre = {c["horse_name"]: c for c in caballos}
+    _aviso_fuente(caballos)
 
     value_bets = [f["Caballo"] for f in filas if f["Value bet"]]
     if value_bets:
@@ -1744,6 +1754,7 @@ def _movil_carrera(umbral: float) -> None:
         cuotas = _editor_cuotas_movil(numero, caballos)
     filas = analizar_carrera(caballos, cuotas, umbral, _predictor())
     por_nombre = {c["horse_name"]: c for c in caballos}
+    _aviso_fuente(caballos)
 
     value_bets = [f["Caballo"] for f in filas if f["Value bet"]]
     if value_bets:
