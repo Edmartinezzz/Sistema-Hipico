@@ -119,72 +119,82 @@
    "Nuevo top3": 4,
    "Actual 1er": 0,
    "Actual top3": 4
+  },
+  {
+   "Fecha": "2026-11-22",
+   "Hipódromo": "LA RINCONADA",
+   "Reunión": 47,
+   "Carreras": 12,
+   "Nuevo 1er": 4,
+   "Nuevo top3": 8,
+   "Actual 1er": 2,
+   "Actual top3": 10
   }
  ],
  "totales": {
-  "carreras": 112.0,
-  "nuevo_1": 38.0,
-  "nuevo_3": 70.0,
-  "nuevo_ll": 211.21623906322677,
-  "actual_1": 31.0,
-  "actual_3": 73.0,
-  "actual_ll": 212.8963379647227,
-  "azar_1": 14.25492840492839,
-  "azar_3": 42.76478521478522
+  "carreras": 124.0,
+  "nuevo_1": 42.0,
+  "nuevo_3": 78.0,
+  "nuevo_ll": 230.758232651248,
+  "actual_1": 33.0,
+  "actual_3": 83.0,
+  "actual_ll": 235.5103489596301,
+  "azar_1": 15.93310300810299,
+  "azar_3": 47.799309024309046
  },
  "calibracion": [
   {
    "Tramo": "0%–5%",
-   "Prob. modelo": 0.028690132663220926,
-   "Ganó de verdad": 0.05333333333333334,
-   "Caballos": 225
+   "Prob. modelo": 0.02881548575892986,
+   "Ganó de verdad": 0.04897959183673469,
+   "Caballos": 245
   },
   {
    "Tramo": "5%–10%",
-   "Prob. modelo": 0.0729958145987192,
-   "Ganó de verdad": 0.05426356589147287,
-   "Caballos": 258
+   "Prob. modelo": 0.07338755419923418,
+   "Ganó de verdad": 0.050359712230215826,
+   "Caballos": 278
   },
   {
    "Tramo": "10%–20%",
-   "Prob. modelo": 0.13877051302234503,
-   "Ganó de verdad": 0.14695340501792115,
-   "Caballos": 279
+   "Prob. modelo": 0.13979442487569957,
+   "Ganó de verdad": 0.15755627009646303,
+   "Caballos": 311
   },
   {
    "Tramo": "20%–30%",
-   "Prob. modelo": 0.24326394831244033,
-   "Ganó de verdad": 0.20388349514563106,
-   "Caballos": 103
+   "Prob. modelo": 0.24315219627691012,
+   "Ganó de verdad": 0.19469026548672566,
+   "Caballos": 113
   },
   {
    "Tramo": "30%–45%",
-   "Prob. modelo": 0.3606805713757889,
-   "Ganó de verdad": 0.40425531914893614,
-   "Caballos": 47
+   "Prob. modelo": 0.3628519545992271,
+   "Ganó de verdad": 0.4117647058823529,
+   "Caballos": 51
   },
   {
    "Tramo": "45%–100%",
-   "Prob. modelo": 0.5442412109298215,
-   "Ganó de verdad": 0.45454545454545453,
-   "Caballos": 11
+   "Prob. modelo": 0.5446732247293149,
+   "Ganó de verdad": 0.46153846153846156,
+   "Caballos": 13
   }
  ],
  "pesos_ultimo": {
-  "forma": 0.4972182998775906,
-  "tiempo": 0.30697979842259837,
-  "llegada": 0.03148570750118854,
-  "jinete": 0.2111547861293097,
-  "entrenador": -0.03689005696006395,
-  "distancia": 0.05911582644428473,
-  "descanso": -0.035808949201266066,
-  "debut": -0.08623906810645608,
-  "kilos": 0.04035865202598341,
-  "puesto": -0.025150385160463223
+  "forma": 0.4732646640125772,
+  "tiempo": 0.35379815382405433,
+  "llegada": 0.03623457948930833,
+  "jinete": 0.23441720646693043,
+  "entrenador": -0.04309901395656164,
+  "distancia": 0.05842448499275275,
+  "descanso": -0.0376728591477776,
+  "debut": -0.07501052411317187,
+  "kilos": 0.04172280504470416,
+  "puesto": -0.03390432883841875
  },
- "n_reuniones": 15,
+ "n_reuniones": 16,
  "rango": [
   "2026-09-26",
-  "2026-11-21"
+  "2026-11-22"
  ]
 }
