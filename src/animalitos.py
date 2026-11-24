@@ -499,8 +499,17 @@ def tabla_dia(
     return tabla
 
 
-def enjaulados(sorteos: list[dict[str, Any]], limite: int = 10) -> list[dict[str, Any]]:
-    """Animalitos con más tiempo sin salir (días desde la última vez)."""
+def enjaulados(
+    sorteos: list[dict[str, Any]], limite: int = 10, hasta: date | None = None
+) -> list[dict[str, Any]]:
+    """Animalitos con más tiempo sin salir (días desde la última vez).
+
+    ``hasta`` fija la fecha de referencia (por defecto hoy, hora de
+    Venezuela); se ignoran los sorteos posteriores a ella, así se puede
+    usar en evaluaciones con datos del pasado.
+    """
+    hoy = hasta or hoy_ve()
+    corte = hoy.isoformat()
     mapa = animales(sorteos)
     ultima: dict[str, date] = {}
     for s in sorteos:
@@ -508,9 +517,10 @@ def enjaulados(sorteos: list[dict[str, Any]], limite: int = 10) -> list[dict[str
             f = date.fromisoformat(s["fecha"])
         except ValueError:
             continue
+        if f.isoformat() > corte:
+            continue
         if s["numero"] not in ultima or f > ultima[s["numero"]]:
             ultima[s["numero"]] = f
-    hoy = hoy_ve()
     tabla = [
         {
             "numero": num,
@@ -524,11 +534,19 @@ def enjaulados(sorteos: list[dict[str, Any]], limite: int = 10) -> list[dict[str
     return tabla[:limite]
 
 
-def calientes(sorteos: list[dict[str, Any]], dias: int = 7, limite: int = 10) -> list[dict[str, Any]]:
-    """Animalitos más repetidos en los últimos ``dias`` días."""
-    corte = hoy_ve() - timedelta(days=dias - 1)
+def calientes(
+    sorteos: list[dict[str, Any]],
+    dias: int = 7,
+    limite: int = 10,
+    hasta: date | None = None,
+) -> list[dict[str, Any]]:
+    """Animalitos más repetidos en los ``dias`` días previos a ``hasta``."""
+    hoy = hasta or hoy_ve()
+    corte = hoy - timedelta(days=dias - 1)
     conteo = Counter(
-        s["numero"] for s in sorteos if date.fromisoformat(s["fecha"]) >= corte
+        s["numero"]
+        for s in sorteos
+        if corte <= date.fromisoformat(s["fecha"]) <= hoy
     )
     mapa = animales(sorteos)
     return [
@@ -659,4 +677,174 @@ def resumen(sorteos: list[dict[str, Any]]) -> dict[str, Any]:
         "desde": fechas[0] if fechas else None,
         "hasta": fechas[-1] if fechas else None,
         "animales": len(animales(sorteos)),
+    }
+
+
+# --- Estrategias de predicción y su seguimiento ---------------------------
+
+# Las tres formas de elegir animalitos que compara el sistema.
+ESTRATEGIAS = ("dia", "calientes", "enjaulados")
+NOMBRES_ESTRATEGIAS = {
+    "dia": "Top del día de semana",
+    "calientes": "Más repetidos últimos 7 días",
+    "enjaulados": "Más tiempo sin salir",
+}
+
+
+def predicciones_dia(
+    sorteos: list[dict[str, Any]], fecha: date, top: int = TOP_DIA
+) -> dict[str, list[str]]:
+    """Los ``top`` números que elegiría cada estrategia para ``fecha``.
+
+    Solo usa sorteos anteriores a ``fecha`` (como en el día real: se
+    pronostica antes de que salga nada). Devuelve
+    ``{estrategia: [números]}``.
+    """
+    limite = fecha.isoformat()
+    previos = [s for s in sorteos if s["fecha"] < limite]
+    ayer = fecha - timedelta(days=1)
+    return {
+        "dia": [
+            f["numero"]
+            for f in tabla_dia(previos, fecha.weekday()) if f["veces"]
+        ][:top],
+        "calientes": [
+            f["numero"] for f in calientes(previos, limite=top, hasta=ayer)
+        ][:top],
+        "enjaulados": [
+            f["numero"] for f in enjaulados(previos, limite=top, hasta=ayer)
+        ][:top],
+    }
+
+
+def comparar_estrategias(
+    sorteos: list[dict[str, Any]], top: int = TOP_DIA, min_dias: int = 56
+) -> dict[str, dict[str, Any]]:
+    """Prueba honesta de cada estrategia (*walk-forward* por fecha).
+
+    Para cada fecha con ``min_dias`` días previos genera la predicción
+    de cada estrategia usando SOLO esos días y cuenta cuántos sorteos
+    cayeron en ella. ``azar`` es ``top / N`` (elegir al azar).
+    """
+    por_fecha: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for s in sorteos:
+        por_fecha[s["fecha"]].append(s)
+    fechas = sorted(por_fecha)
+    res = {
+        e: {"evaluados": 0, "sorteos": 0, "aciertos": 0} for e in ESTRATEGIAS
+    }
+    numeros: set[str] = set()
+    acum: list[dict[str, Any]] = []
+    for i, fstr in enumerate(fechas):
+        f = date.fromisoformat(fstr)
+        if i >= min_dias and numeros:
+            for e, lista in predicciones_dia(acum, f, top).items():
+                r = res[e]
+                r["evaluados"] += 1
+                r["sorteos"] += len(por_fecha[fstr])
+                r["aciertos"] += sum(
+                    s["numero"] in lista for s in por_fecha[fstr]
+                )
+        for s in por_fecha[fstr]:
+            numeros.add(s["numero"])
+        acum.extend(por_fecha[fstr])
+    n = len(numeros)
+    azar = min(top, n) / n if n else None
+    return {
+        e: {
+            **r,
+            "nombre": NOMBRES_ESTRATEGIAS[e],
+            "tasa": r["aciertos"] / r["sorteos"] if r["sorteos"] else None,
+            "azar": azar,
+        }
+        for e, r in res.items()
+    }
+
+
+def _registro_path(archivo_dir: str | Path) -> Path:
+    return Path(archivo_dir) / "predicciones.json"
+
+
+def registrar_predicciones(
+    slug: str,
+    fecha: date | None = None,
+    archivo_dir: str | Path = ARCHIVO_DIR,
+    top: int = TOP_DIA,
+) -> dict[str, list[str]]:
+    """Guarda en ``predicciones.json`` lo que el sistema elegiría hoy.
+
+    Lo corre la tarea diaria antes del primer sorteo: queda un registro
+    honesto de lo pronosticado (solo con días anteriores), que
+    ``evaluar_registro`` cruza luego con lo que salió de verdad.
+    """
+    fecha = fecha or hoy_ve()
+    dias = leer_archivo(slug, archivo_dir)
+    sorteos = [s for f in sorted(dias) for s in dias[f]]
+    pred = predicciones_dia(sorteos, fecha, top)
+    ruta = _registro_path(archivo_dir)
+    registro: dict[str, dict] = {}
+    if ruta.exists():
+        try:
+            registro = json.loads(ruta.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            logger.warning("Registro de predicciones dañado: %s", ruta)
+    registro.setdefault(slug, {})[fecha.isoformat()] = {
+        "dia_semana": DIAS[fecha.weekday()],
+        **pred,
+    }
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    ruta.write_text(
+        json.dumps(registro, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return pred
+
+
+def evaluar_registro(
+    slug: str, archivo_dir: str | Path = ARCHIVO_DIR, top: int = TOP_DIA
+) -> dict[str, dict[str, Any]]:
+    """Aciertos reales del registro de predicciones de ``slug``.
+
+    Por cada fecha registrada cuyos sorteos ya están en el archivo,
+    cuenta cuántos cayeron en la lista de cada estrategia. Devuelve por
+    estrategia ``{evaluados, sorteos, aciertos, tasa, azar, nombre}``.
+    """
+    ruta = _registro_path(archivo_dir)
+    if not ruta.exists():
+        return {}
+    try:
+        fechas_pred = json.loads(ruta.read_text(encoding="utf-8")).get(slug, {})
+    except json.JSONDecodeError:
+        return {}
+    if not fechas_pred:
+        return {}
+    dias = leer_archivo(slug, archivo_dir)
+    res = {e: {"evaluados": 0, "sorteos": 0, "aciertos": 0} for e in ESTRATEGIAS}
+    numeros: set[str] = set()
+    for fecha, pred in fechas_pred.items():
+        del_dia = dias.get(fecha)
+        if not del_dia:  # todavía no salieron los sorteos de ese día
+            continue
+        numeros.update(s["numero"] for s in del_dia)
+        for e in ESTRATEGIAS:
+            lista = set(pred.get(e) or [])
+            if not lista:
+                continue
+            r = res[e]
+            r["evaluados"] += 1
+            r["sorteos"] += len(del_dia)
+            r["aciertos"] += sum(s["numero"] in lista for s in del_dia)
+    for d in dias.values():
+        numeros.update(s["numero"] for s in d)
+    n = len(numeros)
+    azar = min(top, n) / n if n else None
+    return {
+        e: {
+            **r,
+            "nombre": NOMBRES_ESTRATEGIAS[e],
+            "tasa": r["aciertos"] / r["sorteos"] if r["sorteos"] else None,
+            "azar": azar,
+        }
+        for e, r in res.items()
+        if r["evaluados"]
     }

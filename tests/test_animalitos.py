@@ -368,3 +368,86 @@ def test_efectividad_dia_walk_forward():
     assert ef["aciertos"] == 14 and ef["tasa"] == 1.0
     assert ef["azar"] == pytest.approx(0.5)
     assert an.efectividad_dia(sorteos, min_dias=100)["tasa"] is None
+
+
+def test_enjaulados_y_calientes_respetan_hasta():
+    # Con ``hasta`` solo cuentan los sorteos de ese día hacia atrás.
+    d1, d2, d3 = date(2026, 11, 16), date(2026, 11, 20), date(2026, 11, 22)
+    sorteos = [
+        _sorteo(d1, "05", "León"),
+        _sorteo(d2, "07", "Perico"),
+        _sorteo(d3, "05", "León"),
+    ]
+    # Referencia = d2: el 05 lleva 4 días sin salir, el 07 acaba de salir.
+    enj = an.enjaulados(sorteos, hasta=d2)
+    assert enj[0]["numero"] == "05" and enj[0]["dias_sin_salir"] == 4
+    # Calientes de 7 días terminando en d2 no cuenta el sorteo de d3.
+    cal = an.calientes(sorteos, dias=7, hasta=d2)
+    assert {f["numero"]: f["veces"] for f in cal} == {"05": 1, "07": 1}
+    cal3 = an.calientes(sorteos, dias=7, hasta=d3)
+    assert {f["numero"]: f["veces"] for f in cal3} == {"05": 2, "07": 1}
+
+
+def test_predicciones_dia_solo_usa_dias_anteriores():
+    # Todos los lunes sale el 05: predecir un lunes debe elegir el 05
+    # aunque ese mismo lunes haya salido otro número en la lista dada.
+    inicio = date(2026, 6, 1)  # lunes
+    sorteos = [
+        _sorteo(inicio + timedelta(days=7 * i), "05", "León") for i in range(6)
+    ]
+    objetivo = inicio + timedelta(days=42)  # el lunes siguiente
+    previos = sorteos + [_sorteo(objetivo, "09", "Águila")]
+    pred = an.predicciones_dia(previos, objetivo, top=1)
+    assert pred["dia"] == ["05"]
+    assert len(pred) == 3 and all(len(v) <= 1 for v in pred.values())
+
+
+def test_comparar_estrategias():
+    # Patrón claro de lunes: la estrategia "dia" lo detecta, las demás no
+    # necesariamente — la comparación solo debe contar bien cada método.
+    inicio = date(2026, 6, 1)  # lunes
+    sorteos = []
+    for i in range(30):
+        f = inicio + timedelta(days=i)
+        sorteos.append(_sorteo(f, "05" if f.weekday() == 0 else "07", "X"))
+    comp = an.comparar_estrategias(sorteos, top=1, min_dias=14)
+    assert set(comp) == {"dia", "calientes", "enjaulados"}
+    assert comp["dia"]["tasa"] == 1.0
+    assert comp["dia"]["evaluados"] == 16
+    assert comp["dia"]["azar"] == pytest.approx(0.5)
+    assert all(r["nombre"] for r in comp.values())
+
+
+def test_registrar_y_evaluar_registro(tmp_path):
+    # Escribo un archivo pequeño con un solo día y predicciones para otro.
+    import gzip
+
+    archivo = tmp_path / "archivo"
+    archivo.mkdir()
+    dias = {
+        "2026-11-16": [["09:00 AM", "05", "León", None]],
+        "2026-11-23": [["09:00 AM", "05", "León", None]],
+    }
+    with open(archivo / "lotto-activo.json.gz", "wb") as fh, gzip.GzipFile(
+        fileobj=fh, mode="wb", mtime=0
+    ) as gz:
+        gz.write(
+            json.dumps(
+                {"loteria": "lotto-activo", "dias": dias}, ensure_ascii=False
+            ).encode("utf-8")
+        )
+    pred = an.registrar_predicciones(
+        "lotto-activo", fecha=date(2026, 11, 23), archivo_dir=archivo
+    )
+    assert "5" in pred["dia"]  # los dos lunes archivados salió el 05 (→"5")
+    assert (archivo / "predicciones.json").exists()
+
+    ev = an.evaluar_registro("lotto-activo", archivo)
+    # El 23/11 salió el 05: "dia" acertó; las demás dependen de su lista.
+    assert ev["dia"]["sorteos"] == 1 and ev["dia"]["aciertos"] == 1
+    assert ev["dia"]["tasa"] == 1.0
+    # Un día sin sorteos archivados no evalúa.
+    an.registrar_predicciones(
+        "lotto-activo", fecha=date(2026, 11, 24), archivo_dir=archivo
+    )
+    assert an.evaluar_registro("lotto-activo", archivo)["dia"]["evaluados"] == 1

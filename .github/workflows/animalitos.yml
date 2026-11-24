@@ -33,6 +33,9 @@ jobs:
       - name: Archivar sorteos
         run: python scripts/archivar_animalitos.py
 
+      - name: Registrar predicciones del día
+        run: python scripts/registrar_predicciones.py
+
       - name: Subir cambios
         run: |
           git config user.name "github-actions[bot]"
