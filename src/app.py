@@ -1170,6 +1170,37 @@ def _tab_animalitos() -> None:
             "tiene memoria: úsalo como guía, no como garantía."
         )
 
+    with st.expander("¿Qué método va mejor?"):
+        comp = animalitos.comparar_estrategias(previos, top)
+        filas = [
+            {
+                "Método": r["nombre"],
+                "Días": r["evaluados"],
+                "Sorteos": r["sorteos"],
+                "Aciertos": r["aciertos"],
+                "Tasa": ui.pct(r["tasa"]) if r["tasa"] is not None else "—",
+                "Azar": ui.pct(r["azar"]) if r["azar"] is not None else "—",
+            }
+            for r in comp.values()
+        ]
+        st.dataframe(pd.DataFrame(filas), hide_index=True, width="stretch")
+        vivo = animalitos.evaluar_registro(slug)
+        if vivo:
+            st.caption(
+                "Desde que la tarea diaria empezó a registrar las predicciones: "
+                + " · ".join(
+                    f"{r['nombre']} {r['aciertos']}/{r['sorteos']}"
+                    for r in vivo.values()
+                )
+            )
+        st.caption(
+            "Cada día se evalúan los tres métodos eligiendo solo con días "
+            "anteriores (como se usaría de verdad) y se registra la predicción "
+            "antes del primer sorteo. Si ninguno supera al azar de forma "
+            "consistente, es que el sorteo no tiene memoria — es la comprobación "
+            "de que el seguimiento funciona, no una mejora de las probabilidades."
+        )
+
     with st.expander(f"Pronóstico por hora · {dia_plural}", expanded=True):
         _html(ui.pronostico_horas(animalitos.pronostico_horas(sorteos, dia), mapa))
         st.caption(
