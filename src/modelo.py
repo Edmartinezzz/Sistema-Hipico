@@ -33,7 +33,7 @@ import math
 import re
 import statistics
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +47,7 @@ MODELO_PATH = Path(__file__).resolve().parent.parent / "data" / "modelo.json"
 CARACTERISTICAS = (
     "forma", "tiempo", "llegada", "jinete", "entrenador",
     "distancia", "descanso", "debut", "kilos", "puesto",
+    "consistencia", "ritmo", "dist_form", "pista",
 )
 # Punto de partida del entrenamiento (prior): forma + tiempos + jinete.
 # Elegido con el laboratorio sobre 86 carreras (sep-nov 2026); con tan
@@ -65,6 +66,10 @@ NOMBRES = {
     "debut": "Debutante",
     "kilos": "Cambio de kilos",
     "puesto": "Puesto de salida",
+    "consistencia": "Llega cerca (≤3º)",
+    "ritmo": "Ritmo de campaña",
+    "dist_form": "Forma en la distancia",
+    "pista": "Forma en esta pista",
 }
 
 
@@ -188,6 +193,23 @@ def caracteristicas(
     kilos_previos = _num(historial[-1].get("Kg")) if historial else None
     puesto = caballo.get("post_position")
 
+    dist_hoy = caballo.get("distance")
+    en_dist = [
+        h["Llegada"] for h in historial
+        if h.get("Llegada") and dist_hoy and _num(h.get("Dist."))
+        and abs(_num(h["Dist."]) - dist_hoy) <= 150
+    ]
+    pista_hoy = normalizar_nombre(caballo.get("track"))
+    en_pista = [
+        h["Llegada"] for h in historial
+        if h.get("Llegada") and pista_hoy
+        and normalizar_nombre(h.get("Hipódromo")) == pista_hoy
+    ]
+    recientes = sum(
+        1 for h in historial
+        if (fh := _fecha(h.get("Fecha"))) and fh >= fecha - timedelta(days=60)
+    )
+
     return {
         "forma": math.log(fuerza) if fuerza else None,
         "tiempo": -statistics.mean(perdidas[-3:]) if perdidas else None,
@@ -205,6 +227,13 @@ def caracteristicas(
             if caballo.get("weight") and kilos_previos else None
         ),
         "puesto": -(puesto / tamano) if puesto and tamano else None,
+        "consistencia": (
+            statistics.mean(1.0 if l <= 3 else 0.0 for l in llegadas[-4:])
+            if llegadas else None
+        ),
+        "ritmo": math.log1p(recientes) if historial else None,
+        "dist_form": -statistics.mean(en_dist) if en_dist else None,
+        "pista": -statistics.mean(en_pista) if en_pista else None,
     }
 
 
