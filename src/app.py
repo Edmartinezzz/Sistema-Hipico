@@ -30,6 +30,13 @@ if str(RAIZ) not in sys.path:
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
+# Streamlit Cloud actualiza solo app.py en caliente y deja los demás
+# módulos src.* en memoria con la versión anterior (causa ImportError o
+# AttributeError tras cada despliegue). Se descartan para reimportar
+# siempre lo que hay en disco.
+for _mod in [m for m in sys.modules if m == "src" or m.startswith("src.")]:
+    del sys.modules[_mod]
+
 from src import (  # noqa: E402
     animalitos,
     archivo,
