@@ -5,7 +5,7 @@
    "Hipódromo": "NACIONAL DE VALENCIA",
    "Reunión": 25,
    "Carreras": 9,
-   "Nuevo 1er": 4,
+   "Nuevo 1er": 3,
    "Nuevo top3": 8,
    "Actual 1er": 3,
    "Actual top3": 7
@@ -16,7 +16,7 @@
    "Reunión": 40,
    "Carreras": 13,
    "Nuevo 1er": 6,
-   "Nuevo top3": 9,
+   "Nuevo top3": 10,
    "Actual 1er": 4,
    "Actual top3": 10
   },
@@ -36,7 +36,7 @@
    "Reunión": 41,
    "Carreras": 11,
    "Nuevo 1er": 3,
-   "Nuevo top3": 7,
+   "Nuevo top3": 6,
    "Actual 1er": 4,
    "Actual top3": 6
   },
@@ -45,8 +45,8 @@
    "Hipódromo": "LA RINCONADA",
    "Reunión": 42,
    "Carreras": 5,
-   "Nuevo 1er": 3,
-   "Nuevo top3": 5,
+   "Nuevo 1er": 2,
+   "Nuevo top3": 4,
    "Actual 1er": 2,
    "Actual top3": 5
   },
@@ -56,7 +56,7 @@
    "Reunión": 27,
    "Carreras": 8,
    "Nuevo 1er": 4,
-   "Nuevo top3": 6,
+   "Nuevo top3": 7,
    "Actual 1er": 5,
    "Actual top3": 7
   },
@@ -75,8 +75,8 @@
    "Hipódromo": "NACIONAL DE VALENCIA",
    "Reunión": 28,
    "Carreras": 9,
-   "Nuevo 1er": 1,
-   "Nuevo top3": 3,
+   "Nuevo 1er": 2,
+   "Nuevo top3": 4,
    "Actual 1er": 2,
    "Actual top3": 4
   },
@@ -85,8 +85,8 @@
    "Hipódromo": "LA RINCONADA",
    "Reunión": 44,
    "Carreras": 11,
-   "Nuevo 1er": 1,
-   "Nuevo top3": 5,
+   "Nuevo 1er": 2,
+   "Nuevo top3": 6,
    "Actual 1er": 1,
    "Actual top3": 5
   },
@@ -106,7 +106,7 @@
    "Reunión": 46,
    "Carreras": 12,
    "Nuevo 1er": 4,
-   "Nuevo top3": 6,
+   "Nuevo top3": 7,
    "Actual 1er": 5,
    "Actual top3": 8
   },
@@ -115,7 +115,7 @@
    "Hipódromo": "NACIONAL DE VALENCIA",
    "Reunión": 29,
    "Carreras": 6,
-   "Nuevo 1er": 3,
+   "Nuevo 1er": 2,
    "Nuevo top3": 4,
    "Actual 1er": 0,
    "Actual top3": 4
@@ -126,16 +126,16 @@
    "Reunión": 47,
    "Carreras": 12,
    "Nuevo 1er": 4,
-   "Nuevo top3": 8,
+   "Nuevo top3": 12,
    "Actual 1er": 2,
    "Actual top3": 10
   }
  ],
  "totales": {
   "carreras": 124.0,
-  "nuevo_1": 42.0,
-  "nuevo_3": 78.0,
-  "nuevo_ll": 230.758232651248,
+  "nuevo_1": 41.0,
+  "nuevo_3": 85.0,
+  "nuevo_ll": 229.7001753376083,
   "actual_1": 33.0,
   "actual_3": 83.0,
   "actual_ll": 235.5103489596301,
@@ -145,52 +145,56 @@
  "calibracion": [
   {
    "Tramo": "0%–5%",
-   "Prob. modelo": 0.02881548575892986,
-   "Ganó de verdad": 0.04897959183673469,
-   "Caballos": 245
+   "Prob. modelo": 0.02924972097141222,
+   "Ganó de verdad": 0.03745318352059925,
+   "Caballos": 267
   },
   {
    "Tramo": "5%–10%",
-   "Prob. modelo": 0.07338755419923418,
-   "Ganó de verdad": 0.050359712230215826,
-   "Caballos": 278
+   "Prob. modelo": 0.07483334806862532,
+   "Ganó de verdad": 0.0695970695970696,
+   "Caballos": 273
   },
   {
    "Tramo": "10%–20%",
-   "Prob. modelo": 0.13979442487569957,
-   "Ganó de verdad": 0.15755627009646303,
-   "Caballos": 311
+   "Prob. modelo": 0.13946908496038737,
+   "Ganó de verdad": 0.14736842105263157,
+   "Caballos": 285
   },
   {
    "Tramo": "20%–30%",
-   "Prob. modelo": 0.24315219627691012,
-   "Ganó de verdad": 0.19469026548672566,
-   "Caballos": 113
+   "Prob. modelo": 0.24037772402880314,
+   "Ganó de verdad": 0.22807017543859648,
+   "Caballos": 114
   },
   {
    "Tramo": "30%–45%",
-   "Prob. modelo": 0.3628519545992271,
-   "Ganó de verdad": 0.4117647058823529,
-   "Caballos": 51
+   "Prob. modelo": 0.35808274920177463,
+   "Ganó de verdad": 0.3333333333333333,
+   "Caballos": 57
   },
   {
    "Tramo": "45%–100%",
-   "Prob. modelo": 0.5446732247293149,
-   "Ganó de verdad": 0.46153846153846156,
-   "Caballos": 13
+   "Prob. modelo": 0.5465569346935427,
+   "Ganó de verdad": 0.5333333333333333,
+   "Caballos": 15
   }
  ],
  "pesos_ultimo": {
-  "forma": 0.4732646640125772,
-  "tiempo": 0.35379815382405433,
-  "llegada": 0.03623457948930833,
-  "jinete": 0.23441720646693043,
-  "entrenador": -0.04309901395656164,
-  "distancia": 0.05842448499275275,
-  "descanso": -0.0376728591477776,
-  "debut": -0.07501052411317187,
-  "kilos": 0.04172280504470416,
-  "puesto": -0.03390432883841875
+  "forma": 0.438587156324556,
+  "tiempo": 0.32845638090724766,
+  "llegada": -0.09233223572042822,
+  "jinete": 0.2399272175321429,
+  "entrenador": -0.05730154554678245,
+  "distancia": 0.06438929373792,
+  "descanso": -0.14472620735626074,
+  "debut": -0.05283581975338487,
+  "kilos": 0.04139935396410201,
+  "puesto": -0.028192898893031063,
+  "consistencia": 0.10219855239634168,
+  "ritmo": -0.17590305767217096,
+  "dist_form": -0.06442033329007793,
+  "pista": 0.18165746261421412
  },
  "n_reuniones": 16,
  "rango": [
